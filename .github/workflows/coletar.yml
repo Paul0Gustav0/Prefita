@@ -36,7 +36,7 @@ jobs:
 
       # Cadastros da Receita (QSA) consultados nos dias anteriores. Ficam no cache do Actions,
       # fora do repositório público, para não refazer ~1.500 consultas todo dia.
-      - uses: actions/cache@v4
+      - uses: actions/cache/restore@v4
         with:
           path: .cache/cnpj
           key: cnpj-${{ github.run_id }}
@@ -47,6 +47,13 @@ jobs:
           PREFITA_SENHA: ${{ secrets.PREFITA_SENHA }}
         run: python coletor/coletar.py
 
+      # Salva o cache mesmo se um passo seguinte falhar, para não repetir as consultas à Receita.
+      - uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: .cache/cnpj
+          key: cnpj-${{ github.run_id }}
+
       - name: Salvar dados no repositório
         run: |
           git config user.name "prefita-bot"
@@ -56,7 +63,13 @@ jobs:
             echo "Nada novo hoje."
           else
             git commit -m "Dados atualizados em $(date -u +%Y-%m-%d)"
-            git push
+            # Se alguém mesclou algo no main durante a coleta, junta e tenta de novo.
+            for i in 1 2 3 4; do
+              git push && break
+              git pull --rebase -X theirs origin main
+              sleep $((i * 5))
+            done
+            git log origin/main -1 --format=%H | grep -q "$(git rev-parse HEAD)" || { echo "não consegui enviar"; exit 1; }
           fi
 
       - uses: actions/configure-pages@v5
