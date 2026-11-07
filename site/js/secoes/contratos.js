@@ -2,7 +2,8 @@
 (function () {
   "use strict";
   const P = window.Prefita, T = P.tce, { compact, num, esc, data, brl } = P.fmt;
-  let ordem = "recentes", mostrar = 12, cat = "";
+  let ordem = "recentes", mostrar = 12;
+  const fst = { cat: "", vig: "", faixa: "" };
 
   P.registrarSecao({
     id: "contratos", titulo: "Contratos PNCP", proprioCabecalho: true, icone: "doc", ordem: 2, filtros: ["ano", "busca"],
@@ -14,7 +15,14 @@
       const b = (f.busca || "").trim();
       const hoje = new Date().toISOString().slice(0, 10), em60 = new Date(Date.now() + 60 * 864e5).toISOString().slice(0, 10);
       const doAno = todos.filter((c) => String(c.assinatura || c.publicado || "").startsWith(f.ano) && (!b || P.contem([c.forn, c.objeto, c.num, c.doc], b)));
-      const l = doAno.filter((c) => !cat || c.categoria === cat);
+      const vigencia = (c) => !c.fim ? "Sem data de fim" : c.fim < hoje ? "Encerrado" : c.fim <= em60 ? "Vence em até 60 dias" : "Em vigor";
+      const fbox = document.createElement("div"); fbox.className = "filters";
+      const l = P.facetas(fbox, doAno, [
+        { k: "cat", rotulo: "Categoria", todos: "Todas", valor: (c) => c.categoria || "Outros" },
+        { k: "vig", rotulo: "Situação", todos: "Todos", valor: vigencia },
+        { k: "faixa", rotulo: "Valor", todos: "Qualquer valor", valor: (c) => +c.valor || 0, faixas: P.FAIXAS_VALOR },
+      ], fst, () => { mostrar = 12; P.setFiltro({}); });
+      const cat = fst.cat;
       const tot = l.reduce((s, c) => s + (+c.valor || 0), 0);
       const vencendo = todos.filter((c) => c.fim && c.fim >= hoje && c.fim <= em60);
       const maior = [...l].sort((a, b) => (+b.valor || 0) - (+a.valor || 0))[0];
@@ -27,7 +35,7 @@
       lista.sort(sorters[ordem]);
 
       el.innerHTML = `
-        <div class="page-head"><div><div class="eyebrow">Portal Nacional de Contratações Públicas</div><h1>Contratos da Prefeitura</h1><p>Todo contrato assinado pela Prefeitura precisa ser publicado no PNCP. Aqui estão os de ${esc(f.ano)}, com valor, vigência e o link para o documento original.</p></div></div>
+        <div class="page-head"><div><div class="eyebrow">Portal Nacional de Contratações Públicas</div><h1>Contratos da Prefeitura</h1><p>Todo ${P.termo("contrato", "contrato")} assinado pela Prefeitura precisa ser publicado no ${P.termo("pncp", "PNCP")}. Aqui estão os de ${esc(f.ano)}, com valor, vigência e o link para o documento original.</p></div></div>
         ${+f.ano < 2023 ? `<div class="notice">${P.ico("info")}<span>O PNCP só passou a ser obrigatório em 2023, por isso há poucos ou nenhum contrato antes disso.</span></div>` : ""}
         ${P.ui.tiles([
           { label: "Contratos", value: num(l.length), note: cat ? `na categoria ${esc(cat)}` : `assinados em ${esc(f.ano)}` },
@@ -35,9 +43,10 @@
           { label: "Vencem em 60 dias", value: num(vencendo.length), note: vencendo.length ? "de qualquer ano, ainda vigentes" : "nenhum contrato perto do fim" },
           { label: "Maior contrato", value: maior ? compact(+maior.valor || 0) : "–", note: maior ? esc(maior.forn) : "sem dados" },
         ])}
+        <div data-fbox></div>
         <div class="bento">
           <section class="card span-4" style="align-self:start">
-            <div class="card-hd"><div><h2>Por categoria</h2><div class="sub">Toque para filtrar a lista</div></div>${cat ? `<button class="chip" type="button" id="ctCatX"><span>${esc(cat)}</span><i>✕</i></button>` : ""}</div>
+            <div class="card-hd"><div><h2>Por categoria</h2><div class="sub">Toque para filtrar a lista</div></div></div>
             <div class="card-bd"><div id="ctCats"></div></div>
           </section>
           <section class="card span-8">
@@ -48,8 +57,8 @@
           </section>
         </div>`;
 
-      P.ui.hbars(el.querySelector("#ctCats"), [...cats.entries()].sort((a, b) => b[1] - a[1]).map(([k, v]) => ({ k, v })), { total: doAno.reduce((s, c) => s + (+c.valor || 0), 0), onClick: (k) => { cat = cat === k ? "" : k; mostrar = 12; P.setFiltro({}); } });
-      const x = el.querySelector("#ctCatX"); if (x) x.onclick = () => { cat = ""; P.setFiltro({}); };
+      P.ui.hbars(el.querySelector("#ctCats"), [...cats.entries()].sort((a, b) => b[1] - a[1]).map(([k, v]) => ({ k, v })), { total: doAno.reduce((s, c) => s + (+c.valor || 0), 0), onClick: (k) => { fst.cat = fst.cat === k ? "" : k; mostrar = 12; P.setFiltro({}); } });
+      el.querySelector("[data-fbox]").replaceWith(fbox);
       el.querySelector("#ctLista").innerHTML = lista.length ? lista.slice(0, mostrar).map((c) => {
         const vence = c.fim && c.fim >= hoje && c.fim <= em60, encerrado = c.fim && c.fim < hoje;
         const link = c.ano && c.seq ? `https://pncp.gov.br/app/contratos/46634374000160/${c.ano}/${c.seq}` : "";

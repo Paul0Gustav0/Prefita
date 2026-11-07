@@ -8,13 +8,13 @@
     async render(el) {
       const anos = [...((await P.json("data/resumo.json")).anos_portal || [])].sort((a, b) => b - a);
       if (!anos.length) throw new Error("sem dados");
-      const st = { ano: anos[0], busca: "", mod: "" };
+      const st = { ano: anos[0], busca: P.buscaInicial("licitacoes"), mod: "", vig: "", faixa: "", sit: "" };
       el.innerHTML = `
-        <p class="muted" style="margin:0 0 14px;max-width:75ch">Processos de compra abertos pela Prefeitura e os contratos assinados, com quanto de cada contrato já foi empenhado e quanto ainda pode ser gasto.</p>
+        <p class="muted" style="margin:0 0 14px;max-width:75ch">Processos de compra (${P.termo("licitacao", "licitações")}, ${P.termo("pregao", "pregões")}, ${P.termo("dispensa", "dispensas")}) abertos pela Prefeitura e os ${P.termo("contrato", "contratos")} assinados, com quanto de cada contrato já foi empenhado e quanto ainda pode ser gasto.</p>
         <div class="filters">
           <label>Ano<select data-f="ano">${anos.map(a => `<option>${a}</option>`).join("")}</select></label>
-          <label>Buscar fornecedor, objeto ou processo<input type="search" data-f="busca" placeholder="Ex.: merenda, pavimentação"></label>
-          <span data-chips></span>
+          <label>Buscar fornecedor, objeto ou processo<input type="search" data-f="busca" placeholder="Buscar empresa ou o que foi comprado (ex.: merenda, asfalto)"></label>
+          <span class="facetas" data-facetas></span>
         </div>
         <div data-kpis style="margin-top:18px"></div>
         <div class="grid" style="margin-top:22px">
@@ -30,19 +30,22 @@
         const [cts, lics] = await Promise.all([P.json(`data/contratos-${st.ano}.json`), P.json(`data/licitacoes-${st.ano}.json`)]);
         const b = st.busca.trim();
         const tem = (...xs) => !b || P.contem(xs.map(x => x || ""), b);
-        const fc = cts.filter(c => !c.anulado && (!st.mod || c.mod === st.mod) && tem(c.forn, c.objeto, c.num, c.proc));
+        const vig = c => !c.fim ? "Sem data de fim" : c.fim < hoje ? "Encerrado" : c.fim <= em60 ? "Vence em até 60 dias" : "Em vigor";
+        const fc = P.facetas(q("[data-facetas]"), cts.filter(c => !c.anulado && tem(c.forn, c.objeto, c.num, c.proc)), [
+          { k: "mod", rotulo: "Modalidade", todos: "Todas", valor: c => c.mod },
+          { k: "vig", rotulo: "Contrato", todos: "Todos", valor: vig },
+          { k: "faixa", rotulo: "Valor", todos: "Qualquer valor", valor: c => c.valor + c.aditado, faixas: P.FAIXAS_VALOR },
+        ], st, desenhar);
         const fl = lics.filter(l => (!st.mod || l.mod === st.mod) && tem(l.objeto, l.proc));
         const total = fc.reduce((s, c) => s + c.valor + c.aditado, 0);
         const diretas = fc.filter(c => /dispensa|inexig/i.test(c.mod)).reduce((s, c) => s + c.valor + c.aditado, 0);
         const vencendo = fc.filter(c => c.fim >= hoje && c.fim <= em60).length;
         q("[data-kpis]").innerHTML = P.kpis([
           [`Contratado em ${st.ano}`, fmt.compact(total), `${fmt.num(fc.length)} contratos, aditivos incluídos`],
-          ["Sem licitação", total ? fmt.pct(diretas / total * 100) : "–", `dispensa e inexigibilidade: ${fmt.compact(diretas)}`],
+          [`Sem licitação`, total ? fmt.pct(diretas / total * 100) : "–", `dispensa e inexigibilidade: ${fmt.compact(diretas)}`],
           ["Vencem em 60 dias", fmt.num(vencendo), "contratos que vão precisar de renovação ou nova compra"],
           ["Processos abertos", fmt.num(fl.length), `${fmt.num(fl.filter(l => /andamento/i.test(l.situacao)).length)} em andamento`],
         ]);
-        q("[data-chips]").innerHTML = st.mod ? `<button class="chip" type="button" data-limpa>${fmt.esc(st.mod)} ✕</button>` : "";
-        if (st.mod) q("[data-limpa]").onclick = () => { st.mod = ""; desenhar(); };
         P.barras(q("[data-mod]"), P.somarPor(fc, c => c.mod, c => c.valor + c.aditado), { total, onClick: k => { st.mod = k; desenhar(); } });
         P.barras(q("[data-forn]"), P.somarPor(fc, c => c.forn, c => c.valor + c.aditado).slice(0, 10), { total, onClick: k => { st.busca = k; q("[data-f=busca]").value = k; desenhar(); } });
         P.tabela(q("[data-ct]"), [
@@ -62,6 +65,7 @@
         ], fl, { porPagina: 15 });
       }
       q("[data-f=ano]").onchange = e => { st.ano = e.target.value; desenhar(); };
+      q("[data-f=busca]").value = st.busca;
       let t; q("[data-f=busca]").oninput = e => { clearTimeout(t); t = setTimeout(() => { st.busca = e.target.value; desenhar(); }, 200); };
       await desenhar();
     },

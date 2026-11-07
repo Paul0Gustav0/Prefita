@@ -45,7 +45,7 @@
       const [inteiro, cent] = P.fmt.brl(total).split(/(?=,\d+$)/);
       const sp = f.mes ? null : undefined; // sparkline só faz sentido com o ano inteiro
       el.innerHTML = `
-        <div class="page-head"><div><div class="eyebrow">Prefeitura e Câmara de Itaberá · SP</div><h1>Para onde vai o dinheiro de Itaberá</h1><p>Cada empenho é um compromisso de gasto: quem vai receber, quanto e quando. Dados do Tribunal de Contas do Estado, atualizados todo dia.</p></div></div>
+        <div class="page-head"><div><div class="eyebrow">Prefeitura e Câmara de Itaberá · SP</div><h1>Para onde vai o dinheiro de Itaberá</h1><p>Cada ${P.termo("empenho", "empenho")} é um compromisso de gasto: quem vai receber, quanto e quando. Dados do Tribunal de Contas do Estado, atualizados todo dia.</p></div></div>
         <div class="hero">
           <div class="hero-main">
             <div class="eyebrow">Empenhado em ${esc(periodo)}${f.orgao ? (f.orgao === "C" ? " · Câmara" : " · Prefeitura") : ""}</div>
@@ -55,7 +55,7 @@
           </div>
           <div class="hero-side">${P.ui.tiles([
             { label: "Pago", value: compact(pago), note: total > 0 ? `${pct(Math.min(pago / total, 9.99), 0)} do empenhado, inclui restos de anos anteriores` : "pagamentos feitos no período", spark: sp ?? mesP, title: P.fmt.brl(pago) },
-            { label: "Anulado", value: compact(anulado), note: "empenhos cancelados ou reduzidos", spark: sp ?? mesN, title: P.fmt.brl(anulado) },
+            { label: "Anulado", value: compact(anulado), note: `${P.termo("anulacao", "empenhos cancelados")} ou reduzidos`, spark: sp ?? mesN, title: P.fmt.brl(anulado) },
             { label: "Empenhos emitidos", value: num(emps.length), note: "notas de empenho no período", spark: sp ?? mesQ },
             { label: "Credores", value: num(credores), note: "fornecedores, servidores e entidades", spark: sp ?? mesC.map((s) => s.size) },
           ])}</div>

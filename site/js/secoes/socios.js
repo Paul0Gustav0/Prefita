@@ -23,12 +23,13 @@
       const empresas = d.empresas || [];
       if (!empresas.length) throw new Error("sem dados");
       const porCnpj = new Map(empresas.map((e) => [e.cnpj, e]));
-      const st = { busca: "", sinal: "" };
+      const st = { busca: P.buscaInicial("socios"), sinal: "", cidade: "", porte: "" };
       el.innerHTML = `
         <div class="notice" style="margin-bottom:14px">${P.ico("info")}<span>Os sinais são calculados automaticamente e não indicam irregularidade por si só. Endereço repetido, por exemplo, pode ser um escritório de contabilidade. Sempre confira na Receita e nos contratos.</span></div>
         <div class="filters">
           <label style="flex:1;min-width:200px">Buscar empresa, sócio, CNPJ ou cidade<input type="search" data-f="busca" placeholder="Ex.: Itaberá, nome do sócio"></label>
           <label>Sinal<select data-f="sinal"><option value="">Todos os fornecedores</option><option value="*">Só com algum sinal</option>${Object.entries(SINAIS).map(([k, v]) => `<option value="${k}">${v.r}</option>`).join("")}</select></label>
+          <span class="facetas" data-facetas></span>
         </div>
         <div data-kpis style="margin-top:18px"></div>
         <section class="panel" style="margin-top:22px"><div class="hd"><h2>Fornecedores com CNPJ</h2><span>Ordenado pelo valor empenhado</span></div><div data-tabela></div></section>
@@ -36,10 +37,13 @@
       const q = (s) => el.querySelector(s);
 
       function desenhar() {
-        const b = st.busca.trim().toLowerCase();
-        const f = empresas.filter((e) =>
+        const b = st.busca.trim();
+        const f = P.facetas(q("[data-facetas]"), empresas.filter((e) =>
           (!st.sinal || (st.sinal === "*" ? e.sinais.length : e.sinais.some((s) => s.t === st.sinal))) &&
-          (!b || [e.nome, e.fantasia, e.cnpj, cnpjFmt(e.cnpj), e.cidade, e.cnae, ...e.socios.map((s) => s[0])].some((x) => (x || "").toLowerCase().includes(b))));
+          (!b || P.contem([e.nome, e.fantasia, e.cnpj, cnpjFmt(e.cnpj), e.cidade, e.cnae, ...e.socios.map((s) => s[0])].map((x) => x || ""), b))), [
+          { k: "cidade", rotulo: "Cidade", todos: "Todas", valor: (e) => e.cidade },
+          { k: "porte", rotulo: "Tipo de empresa", todos: "Todos", valor: (e) => e.mei ? "MEI" : /individual/i.test(e.natureza || "") ? "Empresário individual" : "Sociedade (tem sócios)" },
+        ], st, desenhar);
         const comSinal = empresas.filter((e) => e.sinais.length).length;
         const itabera = empresas.filter((e) => /^Itabera/i.test(e.cidade)).length;
         q("[data-kpis]").innerHTML = P.kpis([
@@ -60,6 +64,7 @@
         ], f, { ordem: 4 });
       }
       q("[data-f=sinal]").onchange = (e) => { st.sinal = e.target.value; desenhar(); };
+      q("[data-f=busca]").value = st.busca;
       let t; q("[data-f=busca]").oninput = (e) => { clearTimeout(t); t = setTimeout(() => { st.busca = e.target.value; desenhar(); }, 200); };
       desenhar();
     },

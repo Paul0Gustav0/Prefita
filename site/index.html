@@ -23,6 +23,8 @@
     </a>
     <nav class="nav" id="nav" aria-label="Seções"></nav>
     <div class="top-actions">
+      <button class="search-btn" id="buscaGlobal" type="button" aria-label="Buscar pessoa ou empresa em todo o painel"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>Buscar em tudo</span><kbd>/</kbd></button>
+      <button class="icon-btn" id="ajuda" type="button" aria-label="O que quer dizer cada termo" title="O que quer dizer cada termo">?</button>
       <span class="live" id="live"><i></i><span>Carregando…</span></span>
       <button class="icon-btn" id="tema" type="button" aria-label="Trocar tema"></button>
     </div>
@@ -42,6 +44,7 @@
 
 <script src="js/ui.js"></script>
 <script src="js/dados-tce.js"></script>
+<script src="js/busca-global.js"></script>
 <!-- Seções: cada arquivo chama Prefita.registrarSecao(...). Para criar uma aba nova, acrescente uma linha aqui. -->
 <script src="js/secoes/visao-geral.js"></script>
 <script src="js/secoes/contratos.js"></script>
