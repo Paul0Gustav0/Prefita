@@ -110,6 +110,13 @@ body{margin:0}
 .pill{font-size:12px;font-weight:700;padding:1px 8px;border-radius:999px;background:var(--accent-soft)}
 .pill.fim{background:var(--warn-soft);color:var(--warn)}
 .loading{padding:40px 0;text-align:center;color:var(--ink-2)}
+.abas{display:flex;gap:6px;overflow-x:auto;border-bottom:1px solid var(--line);scrollbar-width:thin;margin-bottom:4px}
+.aba{border:0;background:none;padding:10px 14px;font-weight:600;color:var(--ink-2);border-bottom:3px solid transparent;cursor:pointer;white-space:nowrap}
+.aba:hover{color:var(--ink)}
+.aba[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent)}
+.secao[hidden]{display:none}
+#secao-geral:not([hidden]){display:flex;flex-direction:column;gap:22px}
+.btn[disabled]{opacity:.5;cursor:default}
 </style>
 </head>
 <body>
@@ -118,11 +125,15 @@ body{margin:0}
     <div>
       <div class="eyebrow">Prefeitura e Câmara de Itaberá · SP</div>
       <h1>Para onde vai o dinheiro de Itaberá</h1>
-      <p>Cada empenho é um compromisso de gasto: quem vai receber, quanto e quando. Os dados vêm do Tribunal de Contas do Estado e do Portal Nacional de Contratações Públicas, e são atualizados todo dia.</p>
+      <p>Gastos, folha de pagamento, diárias, contratos, receitas e emendas da Prefeitura, com dados públicos do portal de transparência da Prefeitura, do Tribunal de Contas do Estado, do Tesouro e do PNCP, atualizados todo dia.</p>
     </div>
     <span class="updated" id="updated"><span class="dot"></span><span id="updatedText">Carregando…</span></span>
   </header>
 
+  <nav class="abas" id="abas" role="tablist" aria-label="Seções do painel"></nav>
+
+  <div id="secoes">
+  <div id="secao-geral" class="secao">
   <div class="filters">
     <label for="fAno">Ano<select id="fAno"></select></label>
     <label for="fMes">Mês<select id="fMes"></select></label>
@@ -132,9 +143,11 @@ body{margin:0}
   </div>
 
   <div id="app"><div class="loading">Carregando os dados de Itaberá…</div></div>
+  </div>
+  </div>
 
   <footer>
-    Fontes: <a href="https://transparencia.tce.sp.gov.br/" target="_blank" rel="noopener">Portal da Transparência Municipal do TCE-SP</a> (empenhos enviados pelo próprio município ao sistema Audesp, normalmente com algumas semanas de atraso) e <a href="https://pncp.gov.br/app/contratos?q=&amp;orgaos=46634374000160" target="_blank" rel="noopener">PNCP</a> (contratos publicados pela Prefeitura, CNPJ 46.634.374/0001-60). Os sinais de atenção são automáticos e servem para orientar a consulta, não são acusações. Código e histórico dos dados: <a href="https://github.com/Paul0Gustav0/prefita" target="_blank" rel="noopener">github.com/Paul0Gustav0/prefita</a>.
+    Fontes: <a href="https://fiorilli.itabera.online/transparencia/" target="_blank" rel="noopener">Portal da Transparência da Prefeitura</a> (gastos do dia, folha, diárias, licitações, contratos, receitas), <a href="https://siconfi.tesouro.gov.br/" target="_blank" rel="noopener">SICONFI/Tesouro</a> (limite de gasto com pessoal), <a href="https://especiais.transferegov.sistema.gov.br/" target="_blank" rel="noopener">Transferegov</a> (emendas Pix), <a href="https://transparencia.tce.sp.gov.br/" target="_blank" rel="noopener">Portal da Transparência Municipal do TCE-SP</a> (empenhos enviados pelo próprio município ao sistema Audesp, normalmente com algumas semanas de atraso) e <a href="https://pncp.gov.br/app/contratos?q=&amp;orgaos=46634374000160" target="_blank" rel="noopener">PNCP</a> (contratos publicados pela Prefeitura, CNPJ 46.634.374/0001-60). Os sinais de atenção são automáticos e servem para orientar a consulta, não são acusações. Código e histórico dos dados: <a href="https://github.com/Paul0Gustav0/prefita" target="_blank" rel="noopener">github.com/Paul0Gustav0/prefita</a>.
   </footer>
 </div>
 
@@ -171,6 +184,13 @@ body{margin:0}
   </section>
 </template>
 
+<script src="js/prefita-base.js"></script>
+<script src="js/secoes/gastos-do-dia.js"></script>
+<script src="js/secoes/folha.js"></script>
+<script src="js/secoes/diarias.js"></script>
+<script src="js/secoes/licitacoes.js"></script>
+<script src="js/secoes/receitas.js"></script>
+<script src="js/secoes/emendas.js"></script>
 <script>
 (function(){
 const MESES=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
