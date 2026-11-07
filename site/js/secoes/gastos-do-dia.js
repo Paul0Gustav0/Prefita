@@ -27,15 +27,15 @@
       if (!anos.length) throw new Error("sem dados");
       let pagamentos = [];
       try { pagamentos = await P.json("data/pagamentos-recentes.json"); } catch (e) { /* ainda não existe */ }
-      const st = { ano: anos[0], dia: "", busca: "", area: "", sec: "" };
+      const st = { ano: anos[0], dia: "", busca: P.buscaInicial("gastos-do-dia"), area: "", sec: "", mod: "", faixa: "", sit: "" };
 
       el.innerHTML = `
-        <p class="muted" style="margin:0 0 14px;max-width:75ch">Empenhos lançados pela Prefeitura no seu portal de transparência, que é atualizado no mesmo dia (o TCE leva semanas). Empenho é a reserva do dinheiro para uma despesa; depois ela é liquidada (entregue) e paga.</p>
+        <p class="muted" style="margin:0 0 14px;max-width:75ch">Empenhos lançados pela Prefeitura no seu portal de transparência, que é atualizado no mesmo dia (o TCE leva semanas). ${P.termo("empenho", "Empenho")} é a reserva do dinheiro para uma despesa; depois ela é ${P.termo("liquidacao", "liquidada")} (entregue) e ${P.termo("pagamento", "paga")}.</p>
         <div class="filters">
           <label>Ano<select data-f="ano">${anos.map(a => `<option>${a}</option>`).join("")}</select></label>
           <label>Dia<input type="date" data-f="dia"></label>
-          <label>Buscar fornecedor, empenho ou descrição<input type="search" data-f="busca" placeholder="Ex.: combustível, 1021"></label>
-          <span data-chips></span>
+          <label>Buscar fornecedor, empenho ou descrição<input type="search" data-f="busca" placeholder="Buscar empresa, pessoa, número ou o que foi comprado"></label>
+          <span class="facetas" data-facetas></span>
         </div>
         <div data-kpis style="margin-top:18px"></div>
         <div class="grid" style="margin-top:22px">
@@ -50,8 +50,14 @@
       async function desenhar() {
         const linhas = await carregar(st.ano);
         const b = st.busca.trim();
-        const f = linhas.filter(l => (!st.dia || l.dia === st.dia) && (!st.area || l.area === st.area) && (!st.sec || l.sec === st.sec) &&
-          (!b || P.contem([l.forn, l.num, l.desc], b)));
+        const base = linhas.filter(l => (!st.dia || l.dia === st.dia) && (!b || P.contem([l.forn, l.num, l.desc, l.doc], b)));
+        const f = P.facetas(q("[data-facetas]"), base, [
+          { k: "sec", rotulo: "Secretaria", todos: "Todas", valor: l => l.sec },
+          { k: "area", rotulo: "Área", todos: "Todas", valor: l => l.area },
+          { k: "mod", rotulo: "Tipo de compra", todos: "Todos", valor: l => l.mod },
+          { k: "faixa", rotulo: "Valor", todos: "Qualquer valor", valor: l => l.emp, faixas: P.FAIXAS_VALOR },
+          { k: "sit", rotulo: "Pagamento", todos: "Todos", valor: l => l.emp > 0 && l.pago >= l.emp - 0.01 ? "Já pago" : l.pago > 0 ? "Pago em parte" : "Ainda não pago" },
+        ], st, desenhar);
         const ultimoDia = linhas.reduce((m, l) => l.dia > m ? l.dia : m, "");
         const doDia = linhas.filter(l => l.dia === ultimoDia);
         const somaEmp = a => a.reduce((s, l) => s + l.emp, 0), somaPago = a => a.reduce((s, l) => s + l.pago, 0);
@@ -60,12 +66,9 @@
         q("[data-kpis]").innerHTML = P.kpis([
           ["Último dia com empenhos", fmt.compact(somaEmp(doDia)), `${fmt.data(ultimoDia)} · ${fmt.num(doDia.length)} empenhos`],
           ["Pago nos últimos 7 dias", pagamentos.length ? fmt.compact(pg7) : "–", pagamentos.length ? "detectado pela coleta diária" : "aparece a partir da 2ª coleta"],
-          [st.dia || st.area || st.sec || b ? "Empenhado (filtro)" : `Empenhado em ${st.ano}`, fmt.compact(somaEmp(f)), "já descontadas as anulações"],
-          [st.dia || st.area || st.sec || b ? "Pago (filtro)" : `Pago em ${st.ano}`, fmt.compact(somaPago(f)), `${fmt.num(new Set(f.map(l => l.forn)).size)} fornecedores e credores`],
+          [st.dia || st.area || st.sec || st.mod || st.faixa || st.sit || b ? "Empenhado (com filtros)" : `Empenhado em ${st.ano}`, fmt.compact(somaEmp(f)), "já descontadas as anulações"],
+          [st.dia || st.area || st.sec || st.mod || st.faixa || st.sit || b ? "Pago (com filtros)" : `Pago em ${st.ano}`, fmt.compact(somaPago(f)), `${fmt.num(new Set(f.map(l => l.forn)).size)} fornecedores e credores`],
         ]);
-        const chips = [["area", st.area], ["sec", st.sec], ["dia", st.dia && fmt.data(st.dia)]].filter(c => c[1]);
-        q("[data-chips]").innerHTML = chips.map(([k, v]) => `<button class="chip" type="button" data-limpa="${k}">${fmt.esc(v)} ✕</button>`).join(" ");
-        q("[data-chips]").querySelectorAll("[data-limpa]").forEach(c => c.onclick = () => { st[c.dataset.limpa] = ""; if (c.dataset.limpa === "dia") q("[data-f=dia]").value = ""; desenhar(); });
 
         const pg = pagamentos.filter(p => +p.ano === +st.ano || !st.ano).slice(0, 12);
         q("[data-pagtos]").innerHTML = pg.length ? `<div class="contratos">${pg.map(p => `<div class="ct"><div class="obj"><b>${fmt.esc(p.forn)}</b><br><span class="muted">${fmt.esc(p.desc)}</span></div><div class="val">${fmt.brl(p.valor)}</div><div class="meta"><span>${fmt.data(p.dia)}</span><span>Empenho ${fmt.esc(p.num)}</span><span>${fmt.esc(p.sec)}</span></div></div>`).join("")}</div>`
@@ -89,6 +92,7 @@
 
       q("[data-f=ano]").onchange = e => { st.ano = e.target.value; st.dia = ""; q("[data-f=dia]").value = ""; desenhar(); };
       q("[data-f=dia]").onchange = e => { st.dia = e.target.value; if (st.dia) { st.ano = st.dia.slice(0, 4); q("[data-f=ano]").value = st.ano; } desenhar(); };
+      q("[data-f=busca]").value = st.busca;
       let t; q("[data-f=busca]").oninput = e => { clearTimeout(t); t = setTimeout(() => { st.busca = e.target.value; desenhar(); }, 200); };
       await desenhar();
     },

@@ -38,22 +38,23 @@
       if (!meses.length) throw new Error("sem dados");
       let lrf = null;
       try { lrf = resumoLrf(await P.json("data/lrf.json")); } catch (e) { /* opcional */ }
-      const st = { mes: meses[0], busca: "", sec: "", vinc: "" };
+      const st = { mes: meses[0], cargo: "", sec: "", vinc: "", faixa: "", sit: "", ordem: "4:-1" };
+      const buscaIni = P.buscaInicial("folha");
 
       el.innerHTML = `
-        <p class="muted" style="margin:0 0 14px;max-width:75ch">Quem trabalha na Prefeitura, em que cargo e quanto recebeu no mês, como publicado pela própria Prefeitura. A remuneração de servidores é pública por lei; o CPF não é mostrado.</p>
+        <p class="muted" style="margin:0 0 14px;max-width:75ch">Quem trabalha na Prefeitura, em que cargo e quanto recebeu no mês, como publicado pela própria Prefeitura. A remuneração de servidores é pública por lei; o CPF não é mostrado. Use os menus abaixo para ver, por exemplo, só os professores, só uma secretaria ou só quem ganha mais de R$ 12 mil.</p>
         <div class="filters">
-          <label>Mês da folha<select data-f="mes">${meses.map(m => `<option value="${m}">${fmt.mes(m)}</option>`).join("")}</select></label>
-          <span data-chips></span>
+          <label>Mês<select data-f="mes">${meses.map(m => `<option value="${m}">${fmt.mes(m)}</option>`).join("")}</select></label>
+          <span class="facetas" data-facetas></span>
         </div>
         <div data-kpis style="margin-top:18px"></div>
         <div class="grid" style="margin-top:22px">
           <section class="panel"><div class="hd"><h2>Por secretaria</h2><span>Total bruto · toque para filtrar</span></div><div class="hbars" data-sec></div></section>
           <section class="panel"><div class="hd"><h2>Por tipo de vínculo</h2><span>Total bruto · toque para filtrar</span></div><div class="hbars" data-vinc></div></section>
           <section class="panel" data-lrf-box hidden><div class="hd"><h2>Limite da Lei de Responsabilidade Fiscal</h2><span data-lrf-per></span></div><div data-lrf></div></section>
-          <section class="panel"><div class="hd"><h2>Cargos com mais gente</h2><span>No mês selecionado</span></div><div class="hbars" data-cargo></div></section>
+          <section class="panel"><div class="hd"><h2>Cargos com mais gente</h2><span>Toque num cargo para filtrar</span></div><div class="hbars" data-cargo></div></section>
         </div>
-        <section class="panel" style="margin-top:22px"><div class="hd"><h2>Servidores</h2><span>Maiores salários primeiro · toque no cabeçalho para ordenar</span></div><div data-tabela></div></section>`;
+        <section class="panel" style="margin-top:22px"><div class="hd"><h2>Servidores</h2><span class="filters-mini" data-ordem></span></div><div data-tabela></div></section>`;
       const q = s => el.querySelector(s);
 
       if (lrf && lrf.pct != null) {
@@ -74,9 +75,13 @@
 
       async function desenhar() {
         const linhas = await carregar(st.mes);
-        const b = st.busca.trim();
-        const f = linhas.filter(l => (!st.sec || l.sec === st.sec) && (!st.vinc || l.vinc === st.vinc) &&
-          (!b || P.contem([l.nome, l.cargo, l.local, l.sec], b)));
+        const f = P.facetas(q("[data-facetas]"), linhas, [
+          { k: "cargo", rotulo: "Cargo", todos: "Todos os cargos", valor: l => l.cargo },
+          { k: "sec", rotulo: "Secretaria", todos: "Todas", valor: l => l.sec },
+          { k: "vinc", rotulo: "Vínculo", todos: "Todos", valor: l => l.vinc },
+          { k: "faixa", rotulo: "Salário bruto", todos: "Qualquer valor", valor: l => l.bruto, faixas: P.FAIXAS_SALARIO },
+          { k: "sit", rotulo: "Situação", todos: "Todos", valor: l => l.resc ? "Saiu neste mês (rescisão)" : "Trabalhando" },
+        ], st, desenhar);
         const soma = (a, k) => a.reduce((s, l) => s + l[k], 0);
         const ativos = f.filter(l => !l.resc);
         const ord = [...ativos].sort((a, b) => a.bruto - b.bruto);
@@ -87,12 +92,11 @@
           ["Total líquido", fmt.compact(soma(f, "liq")), `descontos de ${fmt.compact(soma(f, "desc"))}`],
           ["Salário bruto típico", fmt.brl0(mediana), `mediana · maior: ${fmt.brl0(ord.length ? ord[ord.length - 1].bruto : 0)}`],
         ]);
-        const chips = [["sec", st.sec], ["vinc", st.vinc]].filter(c => c[1]);
-        q("[data-chips]").innerHTML = chips.map(([k, v]) => `<button class="chip" type="button" data-limpa="${k}">${fmt.esc(v)} ✕</button>`).join(" ");
-        q("[data-chips]").querySelectorAll("[data-limpa]").forEach(c => c.onclick = () => { st[c.dataset.limpa] = ""; desenhar(); });
         P.barras(q("[data-sec]"), P.somarPor(f, l => l.sec, l => l.bruto).slice(0, 10), { onClick: k => { st.sec = k; desenhar(); } });
         P.barras(q("[data-vinc]"), P.somarPor(f, l => l.vinc, l => l.bruto).slice(0, 10), { onClick: k => { st.vinc = k; desenhar(); } });
-        P.barras(q("[data-cargo]"), P.somarPor(ativos, l => l.cargo, () => 1).slice(0, 10), { formato: v => fmt.num(v) + " pessoas" });
+        P.barras(q("[data-cargo]"), P.somarPor(ativos, l => l.cargo, () => 1).slice(0, 10), { formato: v => fmt.num(v) + " pessoas", onClick: k => { st.cargo = k; desenhar(); } });
+        q("[data-ordem]").innerHTML = P.ordenarPor([["4:-1", "Maior salário bruto"], ["4:1", "Menor salário bruto"], ["6:-1", "Maior salário líquido"], ["0:1", "Nome (A a Z)"], ["3:-1", "Admitidos mais recentemente"], ["3:1", "Há mais tempo na Prefeitura"]], st, desenhar);
+        const [oc, od] = st.ordem.split(":").map(Number);
         P.tabela(q("[data-tabela]"), [
           { t: "Nome", k: "nome", f: (v, l) => `<b>${fmt.esc(v)}</b>${l.resc ? ' <span class="pill fim">rescisão</span>' : ""}` },
           { t: "Cargo", k: "cargo", f: (v, l) => `${fmt.esc(v)}<br><small class="muted">${fmt.esc(l.vinc)}</small>` },
@@ -101,7 +105,7 @@
           { t: "Bruto", k: "bruto", r: true, f: v => fmt.brl(v) },
           { t: "Descontos", k: "desc", r: true, f: v => fmt.brl(v) },
           { t: "Líquido", k: "liq", r: true, f: v => fmt.brl(v) },
-        ], f, { ordem: 4, busca: true, placeholder: "Buscar servidor pelo nome, cargo, secretaria ou local", unidade: "servidores", arquivo: "folha-" + st.mes });
+        ], f, { ordem: oc, dir: od, forcar: true, buscaInicial: buscaIni, busca: true, placeholder: "Buscar servidor pelo nome, cargo, secretaria ou local", unidade: "servidores", arquivo: "folha-" + st.mes });
       }
 
       q("[data-f=mes]").onchange = e => { st.mes = e.target.value; desenhar(); };

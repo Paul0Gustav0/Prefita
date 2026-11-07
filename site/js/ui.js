@@ -231,6 +231,89 @@
     draw();
   };
 
+  /* ---------- filtros por menus (facetas) ----------
+     P.facetas(caixa, linhas, defs, st, aoMudar) desenha um menu por def dentro de "caixa" e devolve as linhas filtradas.
+     def: {k, rotulo, todos?, valor(l)}                  -> menu com os valores existentes e a contagem de cada um
+          {k, rotulo, todos?, valor(l), faixas:[[min, max, "texto"]]} -> menu por faixa de valor
+     Os números de cada menu já levam em conta os outros filtros escolhidos. st[k] guarda a escolha. */
+  P.facetas = (caixa, linhas, defs, st, aoMudar) => {
+    const chave = (d, l) => {
+      const v = d.valor(l);
+      if (d.faixas) { const i = d.faixas.findIndex(([a, b]) => v >= a && v < b); return i < 0 ? "" : String(i); }
+      return v == null || v === "" ? "Não informado" : String(v);
+    };
+    const passa = (l, ignorar) => defs.every((d) => d.k === ignorar || !st[d.k] || chave(d, l) === String(st[d.k]));
+    const html = defs.map((d) => {
+      const cont = new Map();
+      for (const l of linhas) if (passa(l, d.k)) { const c = chave(d, l); if (c !== "") cont.set(c, (cont.get(c) || 0) + 1); }
+      let ops = d.faixas ? d.faixas.map((f, i) => [String(i), f[2]]).filter(([i]) => cont.has(i) || String(st[d.k]) === i) : [...cont.keys()].sort((a, b) => a.localeCompare(b, "pt-BR")).map((k) => [k, k]);
+      if (st[d.k] && !ops.some(([v]) => v === String(st[d.k]))) ops.unshift([String(st[d.k]), d.faixas ? d.faixas[+st[d.k]]?.[2] || st[d.k] : st[d.k]]);
+      const total = [...cont.values()].reduce((a, b) => a + b, 0);
+      return `<label class="${st[d.k] ? "on" : ""}">${esc(d.rotulo)}<select data-fc="${d.k}"><option value="">${esc(d.todos || "Todos")} (${NUM.format(total)})</option>${ops.map(([v, t]) => `<option value="${esc(v)}" ${String(st[d.k]) === v ? "selected" : ""}>${esc(t)} (${NUM.format(cont.get(v) || 0)})</option>`).join("")}</select></label>`;
+    }).join("");
+    const algum = defs.some((d) => st[d.k]);
+    caixa.innerHTML = html + (algum ? `<button class="btn sm ghost" type="button" data-fc-limpa>${P.ico("x")}Limpar filtros</button>` : "");
+    caixa.querySelectorAll("[data-fc]").forEach((s) => (s.onchange = () => { st[s.dataset.fc] = s.value; aoMudar(); }));
+    const lb = caixa.querySelector("[data-fc-limpa]"); if (lb) lb.onclick = () => { defs.forEach((d) => (st[d.k] = "")); aoMudar(); };
+    return linhas.filter((l) => passa(l));
+  };
+  // Faixas de valor prontas (em reais)
+  P.FAIXAS_SALARIO = [[0, 2000, "Até R$ 2 mil"], [2000, 3500, "R$ 2 mil a 3,5 mil"], [3500, 5000, "R$ 3,5 mil a 5 mil"], [5000, 8000, "R$ 5 mil a 8 mil"], [8000, 12000, "R$ 8 mil a 12 mil"], [12000, 20000, "R$ 12 mil a 20 mil"], [20000, Infinity, "Mais de R$ 20 mil"]];
+  P.FAIXAS_VALOR = [[-Infinity, 1000, "Até R$ 1 mil"], [1000, 10000, "R$ 1 mil a 10 mil"], [10000, 62725.59, "R$ 10 mil até o limite da dispensa"], [62725.59, 500000, "R$ 62,7 mil a 500 mil"], [500000, Infinity, "Mais de R$ 500 mil"]];
+  // Menu "Ordenar por": opcoes [[valor, texto]]; st.ordem guarda a escolha.
+  P.ordenarPor = (opcoes, st, aoMudar) => {
+    const id = "o" + Math.random().toString(36).slice(2, 8);
+    setTimeout(() => { const s = document.getElementById(id); if (s) s.onchange = () => { st.ordem = s.value; aoMudar(); }; });
+    return `<label>Ordenar por<select id="${id}">${opcoes.map(([v, t]) => `<option value="${esc(v)}" ${st.ordem === v ? "selected" : ""}>${esc(t)}</option>`).join("")}</select></label>`;
+  };
+
+  /* ---------- glossário: termos explicados em linguagem simples ---------- */
+  const GLOSSARIO = {
+    empenho: ["Empenho", "É a reserva do dinheiro para uma despesa. Quando a Prefeitura decide comprar algo ou contratar um serviço, ela \"empenha\" o valor, como quem separa o dinheiro numa gaveta. Ainda não é o pagamento."],
+    liquidacao: ["Liquidação", "É a confirmação de que o produto foi entregue ou o serviço foi feito. Só depois disso a Prefeitura pode pagar."],
+    pagamento: ["Pagamento", "É quando o dinheiro sai de fato da conta da Prefeitura para o fornecedor ou servidor."],
+    anulacao: ["Anulação", "Cancelamento total ou parcial de um empenho, quando a despesa não vai mais acontecer ou ficou mais barata."],
+    licitacao: ["Licitação", "Disputa pública em que várias empresas oferecem preço e a Prefeitura escolhe a melhor proposta. É a regra para compras públicas."],
+    dispensa: ["Dispensa de licitação", "Compra feita sem disputa, permitida pela lei em casos específicos, como valores baixos (até cerca de R$ 62,7 mil para compras e serviços em 2025) ou emergências."],
+    inexigibilidade: ["Inexigibilidade", "Compra sem disputa porque só existe um fornecedor possível, como um artista para um show ou um software exclusivo."],
+    pregao: ["Pregão", "Tipo de licitação em que as empresas dão lances de preço, como num leilão ao contrário: ganha quem cobra menos."],
+    fracionamento: ["Fracionamento", "Dividir uma compra grande em várias pequenas para ficar abaixo do limite e evitar a licitação. É proibido por lei; quando o painel aponta, é só um sinal para conferir."],
+    contrato: ["Contrato", "Documento que formaliza o que a empresa vai entregar, por quanto e até quando. Desde 2023 deve ser publicado no PNCP."],
+    aditivo: ["Aditivo", "Alteração de um contrato que já existe, para mudar prazo ou valor."],
+    vigencia: ["Vigência", "Período em que o contrato vale. Depois da data final, a empresa não pode mais ser paga por ele sem renovação."],
+    diaria: ["Diária", "Valor pago a um servidor para cobrir hospedagem e alimentação quando ele viaja a trabalho."],
+    bruto: ["Salário bruto", "Tudo o que o servidor ganhou no mês, antes dos descontos."],
+    liquido: ["Salário líquido", "O que sobra depois dos descontos (previdência, imposto de renda, empréstimos etc.). É o que cai na conta."],
+    estatutario: ["Estatutário", "Servidor concursado e efetivo, com estabilidade."],
+    comissionado: ["Cargo em comissão", "Cargo de confiança, escolhido pelo prefeito ou secretário sem concurso, que pode ser exonerado a qualquer momento."],
+    rcl: ["Receita corrente líquida", "Quase tudo o que a Prefeitura arrecada no ano (impostos e repasses), tirando algumas deduções. Serve de base para os limites da Lei de Responsabilidade Fiscal."],
+    lrf: ["Limite com pessoal (LRF)", "A Lei de Responsabilidade Fiscal limita o gasto com salários a 54% da receita corrente líquida. Acima de 51,3% (limite prudencial) a Prefeitura já sofre restrições, como não poder dar aumentos."],
+    emendapix: ["Emenda Pix", "Dinheiro que um deputado ou senador manda direto para a conta da Prefeitura, sem convênio. Por isso é importante acompanhar onde foi gasto."],
+    emendaimp: ["Emenda impositiva", "Parte do orçamento indicada pelos vereadores, que a Prefeitura é obrigada a executar."],
+    pncp: ["PNCP", "Portal Nacional de Contratações Públicas, site do governo federal onde todas as prefeituras devem publicar licitações e contratos."],
+    tce: ["TCE-SP", "Tribunal de Contas do Estado de São Paulo, que fiscaliza as contas das prefeituras. Recebe os dados de gastos pelo sistema Audesp, com algumas semanas de atraso."],
+    credor: ["Credor", "Quem tem dinheiro a receber da Prefeitura: empresa, pessoa, servidor ou outro órgão."],
+  };
+  P.GLOSSARIO = GLOSSARIO;
+  // P.termo("empenho") ou P.termo("empenho", "empenhado") -> texto com explicação ao passar o mouse ou tocar
+  P.termo = (k, texto) => { const g = GLOSSARIO[k]; if (!g) return esc(texto || k); return `<span class="termo" tabindex="0" role="button" aria-label="${esc((texto || g[0]) + ": " + g[1])}" data-tip="${esc(g[1])}">${esc(texto || g[0])}</span>`; };
+  P.abrirGlossario = (foco) => {
+    let d = document.getElementById("glossario");
+    if (!d) {
+      d = document.createElement("dialog"); d.id = "glossario"; d.className = "dlg";
+      d.innerHTML = `<div class="dlg-hd"><div><h2>O que quer dizer cada termo</h2><div class="sub">As palavras da contabilidade pública, em linguagem simples</div></div><button class="icon-btn" type="button" data-fechar aria-label="Fechar">${P.ico("x")}</button></div><div class="dlg-bd"><dl class="gloss">${Object.entries(GLOSSARIO).map(([k, [t, x]]) => `<div id="g-${k}"><dt>${esc(t)}</dt><dd>${esc(x)}</dd></div>`).join("")}</dl></div>`;
+      document.body.append(d);
+      d.querySelector("[data-fechar]").onclick = () => d.close();
+      d.addEventListener("click", (e) => { if (e.target === d) d.close(); });
+    }
+    d.showModal();
+    if (foco) d.querySelector("#g-" + foco)?.scrollIntoView({ block: "center" });
+  };
+
+  /* ---------- busca vinda do link (#/folha?busca=joao) ---------- */
+  const buscasUrl = {};
+  P.buscaInicial = (id) => { const v = buscasUrl[id] || ""; delete buscasUrl[id]; return v; };
+
   /* ---------- atalhos usados pelas seções do portal da Prefeitura ---------- */
   P.kpis = (lista) => ui.tiles(lista.map(([label, value, note]) => ({ label: String(label).replace(/<[^>]+>/g, ""), value, note })));
   P.barras = (el, itens, o = {}) => ui.hbars(el, itens.map(([k, v]) => ({ k, v })), { total: o.total ?? itens.reduce((s, i) => s + i[1], 0), onClick: o.onClick, formato: o.formato });
@@ -243,6 +326,9 @@
     if (el._st && el._cols !== colunas.length) el._st = null;
     el._cols = colunas.length;
     if (el._st) el._st.pg = 0;
+    if (el._st && o.forcar && el._forc !== `${o.ordem}:${o.dir}`) { el._st.k = "c" + (o.ordem || 0); el._st.dir = o.dir || -1; }
+    el._forc = `${o.ordem}:${o.dir}`;
+    if (!el._st && o.buscaInicial) el._st = { k: "c" + (o.ordem || 0), dir: o.dir || -1, pg: 0, q: o.buscaInicial };
     ui.tabela(el, linhas, cols, { porPagina: o.porPagina, ordem: { k: "c" + (o.ordem || 0), dir: o.dir || -1 }, vazio: o.vazio, unidade: o.unidade || "registros", busca: o.busca, arquivo: o.arquivo, placeholder: o.placeholder });
   };
 
@@ -264,6 +350,9 @@
     const m = location.hash.match(/\?(.*)$/);
     if (!m) return;
     const q = new URLSearchParams(m[1]);
+    const id = location.hash.replace(/^#\/?/, "").replace(/\?.*$/, "");
+    const s = secoes.find((x) => x.id === id);
+    if (s && !s.filtros && q.has("busca")) { buscasUrl[id] = q.get("busca"); s._feito = false; return; }
     for (const k of CHAVES) if (q.has(k)) P.filtros[k] = q.get(k);
     if (P.filtros.ano && !P.anos.map(String).includes(String(P.filtros.ano))) P.filtros.ano = String(P.anos[0]);
   }
@@ -399,13 +488,10 @@
     }
     booted = true;
     montarNav();
+    // roda do mouse rola as abas para o lado quando não cabem
+    const nav = document.getElementById("nav");
+    nav.addEventListener("wheel", (e) => { if (nav.scrollWidth > nav.clientWidth && Math.abs(e.deltaY) > Math.abs(e.deltaX)) { nav.scrollLeft += e.deltaY; e.preventDefault(); } }, { passive: false });
     addEventListener("hashchange", rota);
-    // Atalho: "/" vai para a busca da página
-    addEventListener("keydown", (e) => {
-      if (e.key !== "/" || e.ctrlKey || e.metaKey || /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement?.tagName)) return;
-      const alvo = [...document.querySelectorAll("#toolbar input[type=search], .view:not([hidden]) input[type=search]")].find((i) => i.offsetParent);
-      if (alvo) { e.preventDefault(); alvo.focus(); alvo.select(); }
-    });
     rota();
   };
 })();
