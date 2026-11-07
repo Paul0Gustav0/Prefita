@@ -26,9 +26,9 @@
 
       async function desenhar() {
         const linhas = await P.json(`data/diarias-${st.ano}.json`);
-        const b = st.busca.trim().toLowerCase();
+        const b = st.busca.trim();
         const f = linhas.filter(l => (!st.fav || l.fav === st.fav) && (!st.tipo || l.tipo === st.tipo) &&
-          (!b || [l.fav, l.orgao, l.desc, l.cargo].some(x => (x || "").toLowerCase().includes(b))));
+          (!b || P.contem([l.fav, l.orgao, l.desc, l.cargo], b)));
         const total = f.reduce((s, l) => s + l.valor, 0);
         const porFav = P.somarPor(f, l => l.fav, l => l.valor);
         q("[data-kpis]").innerHTML = P.kpis([
