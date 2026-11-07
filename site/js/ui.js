@@ -187,7 +187,8 @@
 
   /* Tabela paginada, ordenável, com busca própria e download em CSV.
      cols: [{k, t, r?(alinha à direita), html(row)?, val(row)?, cls?}]
-     opts {porPagina, ordem:{k,dir}, vazio, unidade, busca (true/false; padrão: mais de 10 linhas), arquivo (nome do CSV)} */
+     opts {porPagina, ordem:{k,dir}, vazio, unidade, busca (true/false; padrão: mais de 10 linhas), arquivo (nome do CSV),
+           aoClicar(linha) (a linha vira um botão que abre os detalhes)} */
   ui.tabela = (el, linhas, cols, opts = {}) => {
     const st = el._st || (el._st = { k: opts.ordem?.k || cols[0].k, dir: opts.ordem?.dir || -1, pg: 0, q: "" });
     if (opts.resetar) st.pg = 0;
@@ -207,13 +208,18 @@
       const pg = s.slice(st.pg * PG, (st.pg + 1) * PG);
       const vazio = st.q.trim() ? `<div class="empty">${P.ico("search")}<span>Nada encontrado para “${esc(st.q)}”.</span><button class="btn sm" type="button" data-limpar-busca>Limpar busca</button></div>` : ui.vazio(opts.vazio);
       const de = s.length ? st.pg * PG + 1 : 0, ate = st.pg * PG + pg.length;
-      corpo.innerHTML = `<div class="table-wrap"><table><thead><tr>${cols.map((c) => `<th data-k="${c.k}" class="${c.r ? "r" : ""}" tabindex="0" ${c.k === st.k ? `aria-sort="${st.dir > 0 ? "ascending" : "descending"}"` : ""}>${esc(c.t)}<span class="ar">${st.dir > 0 ? "↑" : "↓"}</span></th>`).join("")}</tr></thead><tbody>${pg.length ? pg.map((r) => `<tr>${cols.map((c) => `<td data-label="${esc(c.t)}" class="${c.r ? "r num" : ""} ${c.cls || ""}"><div class="cv">${c.html ? c.html(r) : esc(val(c, r))}</div></td>`).join("")}</tr>`).join("") : `<tr><td colspan="${cols.length}">${vazio}</td></tr>`}</tbody></table></div>
+      corpo.innerHTML = `<div class="table-wrap"><table><thead><tr>${cols.map((c) => `<th data-k="${c.k}" class="${c.r ? "r" : ""}" tabindex="0" ${c.k === st.k ? `aria-sort="${st.dir > 0 ? "ascending" : "descending"}"` : ""}>${esc(c.t)}<span class="ar">${st.dir > 0 ? "↑" : "↓"}</span></th>`).join("")}</tr></thead><tbody>${pg.length ? pg.map((r, i) => `<tr${opts.aoClicar ? ` class="clicavel" tabindex="0" data-linha="${i}" title="Ver detalhes"` : ""}>${cols.map((c) => `<td data-label="${esc(c.t)}" class="${c.r ? "r num" : ""} ${c.cls || ""}"><div class="cv">${c.html ? c.html(r) : esc(val(c, r))}</div></td>`).join("")}</tr>`).join("") : `<tr><td colspan="${cols.length}">${vazio}</td></tr>`}</tbody></table></div>
         <div class="card-ft tbl-ft"><span>${s.length ? `${NUM.format(de)}–${NUM.format(ate)} de ${NUM.format(s.length)} ${esc(unidade)}` : `0 ${esc(unidade)}`}${st.q.trim() && s.length !== linhas.length ? ` <span class="faint">(de ${NUM.format(linhas.length)})</span>` : ""}</span><span class="pager">${pages > 2 ? `<button class="btn sm ghost" data-ir="0" ${st.pg === 0 ? "disabled" : ""} aria-label="Primeira página">«</button>` : ""}<button class="btn sm" data-p="-1" ${st.pg === 0 ? "disabled" : ""}>${P.ico("left")}<span>Anterior</span></button><span class="pg-n">${st.pg + 1} / ${pages}</span><button class="btn sm" data-p="1" ${st.pg >= pages - 1 ? "disabled" : ""}><span>Próxima</span>${P.ico("right")}</button>${pages > 2 ? `<button class="btn sm ghost" data-ir="${pages - 1}" ${st.pg >= pages - 1 ? "disabled" : ""} aria-label="Última página">»</button>` : ""}</span></div>`;
       const ordenar = (th) => { const k = th.dataset.k; const c = cols.find((x) => x.k === k); st.dir = st.k === k ? -st.dir : c.r || k === "dt" ? -1 : 1; st.k = k; st.pg = 0; draw(); };
       corpo.querySelectorAll("th[data-k]").forEach((th) => { th.onclick = () => ordenar(th); th.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); ordenar(th); } }; });
       const topo = () => { const r = el.getBoundingClientRect(); if (r.top < 0) window.scrollBy({ top: r.top - 130, behavior: "smooth" }); };
       corpo.querySelectorAll("[data-p]").forEach((b) => (b.onclick = () => { st.pg += +b.dataset.p; draw(); topo(); }));
       corpo.querySelectorAll("[data-ir]").forEach((b) => (b.onclick = () => { st.pg = +b.dataset.ir; draw(); topo(); }));
+      if (opts.aoClicar) corpo.querySelectorAll("tr[data-linha]").forEach((tr) => {
+        const abrir = (e) => { if (e.target.closest("a,button,input,select")) return; opts.aoClicar(pg[+tr.dataset.linha]); };
+        tr.onclick = abrir;
+        tr.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); abrir(e); } };
+      });
       const lb = corpo.querySelector("[data-limpar-busca]"); if (lb) lb.onclick = () => { st.q = ""; if (inp) { inp.value = ""; inp.focus(); } draw(); };
     };
     if (inp) { inp.value = st.q; let t; inp.oninput = () => { clearTimeout(t); t = setTimeout(() => { st.q = inp.value; st.pg = 0; draw(); }, 120); }; }
@@ -318,7 +324,7 @@
   P.kpis = (lista) => ui.tiles(lista.map(([label, value, note]) => ({ label: String(label).replace(/<[^>]+>/g, ""), value, note })));
   P.barras = (el, itens, o = {}) => ui.hbars(el, itens.map(([k, v]) => ({ k, v })), { total: o.total ?? itens.reduce((s, i) => s + i[1], 0), onClick: o.onClick, formato: o.formato });
   P.somarPor = (linhas, chave, valor) => { const m = new Map(); for (const l of linhas) { const k = chave(l) || "Não informado"; m.set(k, (m.get(k) || 0) + valor(l)); } return [...m.entries()].sort((a, b) => b[1] - a[1]); };
-  // colunas: [{t, k: chave|fn(linha), r, f(valor, linha), mono}]; opts {porPagina, ordem (índice), dir, vazio}
+  // colunas: [{t, k: chave|fn(linha), r, f(valor, linha), mono}]; opts {porPagina, ordem (índice), dir, vazio, aoClicar}
   P.tabela = (el, colunas, linhas, o = {}) => {
     const cols = colunas.map((c, i) => ({ k: "c" + i, t: c.t, r: c.r, cls: c.mono ? "mono" : "", val: (l) => (typeof c.k === "function" ? c.k(l) : l[c.k]),
       html: (l) => { const v = typeof c.k === "function" ? c.k(l) : l[c.k]; return c.f ? c.f(v, l) : esc(v); } }));
@@ -329,7 +335,7 @@
     if (el._st && o.forcar && el._forc !== `${o.ordem}:${o.dir}`) { el._st.k = "c" + (o.ordem || 0); el._st.dir = o.dir || -1; }
     el._forc = `${o.ordem}:${o.dir}`;
     if (!el._st && o.buscaInicial) el._st = { k: "c" + (o.ordem || 0), dir: o.dir || -1, pg: 0, q: o.buscaInicial };
-    ui.tabela(el, linhas, cols, { porPagina: o.porPagina, ordem: { k: "c" + (o.ordem || 0), dir: o.dir || -1 }, vazio: o.vazio, unidade: o.unidade || "registros", busca: o.busca, arquivo: o.arquivo, placeholder: o.placeholder });
+    ui.tabela(el, linhas, cols, { porPagina: o.porPagina, ordem: { k: "c" + (o.ordem || 0), dir: o.dir || -1 }, vazio: o.vazio, unidade: o.unidade || "registros", busca: o.busca, arquivo: o.arquivo, placeholder: o.placeholder, aoClicar: o.aoClicar });
   };
 
   /* ---------- filtros globais ---------- */
