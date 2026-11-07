@@ -3,349 +3,55 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Gastos de Itaberá</title>
+<title>Prefita · Gastos de Itaberá</title>
 <meta name="description" content="Acompanhe para onde vai o dinheiro da Prefeitura e da Câmara de Itaberá (SP), com dados do TCE-SP e do PNCP atualizados todo dia.">
+<meta name="theme-color" content="#f6f6f3" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0d0d0d" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%232a78d6'/%3E%3Cstop offset='1' stop-color='%231baf7a'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='9' fill='url(%23g)'/%3E%3Cpath d='M9 22v-5M14 22v-9M19 22v-6M24 22V10' stroke='%23fff' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Source+Sans+3:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
-<style>
-/* Layout: painel de leitura, resumo no topo, gráficos em grade de 2 colunas, tabela de empenhos no fim. */
-:root{
-  --bg:#f6f7f4; --surface:#ffffff; --line:#dfe3dc; --ink:#14201a; --ink-2:#4b5a51; --ink-3:#7a877f;
-  --accent:#1f6f4a; --accent-soft:#e3f0e8; --bar:#2a78d6; --bar-hi:#184f95; --bar-soft:#cde2fb;
-  --warn:#a15c00; --warn-soft:#fff3dc; --crit:#b3261e; --crit-soft:#fde7e5;
-  --display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
-  --body:"Source Sans 3", "Segoe UI", system-ui, sans-serif;
-  --mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
-}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#121614; --surface:#1a1f1c; --line:#2c342f; --ink:#eef2ee; --ink-2:#b9c4bc; --ink-3:#8a968e;
-  --accent:#5cc28f; --accent-soft:#1e3328; --bar:#3987e5; --bar-hi:#86b6ef; --bar-soft:#1c3a5e;
-  --warn:#f0b35a; --warn-soft:#3a2c14; --crit:#f08a82; --crit-soft:#3d1f1c; color-scheme:dark}}
-:root[data-theme="dark"]{
-  --bg:#121614; --surface:#1a1f1c; --line:#2c342f; --ink:#eef2ee; --ink-2:#b9c4bc; --ink-3:#8a968e;
-  --accent:#5cc28f; --accent-soft:#1e3328; --bar:#3987e5; --bar-hi:#86b6ef; --bar-soft:#1c3a5e;
-  --warn:#f0b35a; --warn-soft:#3a2c14; --crit:#f08a82; --crit-soft:#3d1f1c; color-scheme:dark}
-*{box-sizing:border-box}
-body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5}
-.wrap{max-width:1180px;margin:0 auto;padding-block:28px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:22px}
-h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;letter-spacing:-.01em}
-h1{font-size:clamp(28px,4.2vw,42px);line-height:1.1}
-h2{font-size:20px}
-.eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:.09em;color:var(--ink-3);font-weight:600}
-.muted{color:var(--ink-2)}
-.num{font-variant-numeric:tabular-nums}
-header{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;justify-content:space-between}
-header p{margin:6px 0 0;max-width:62ch;color:var(--ink-2)}
-.status{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:10px;font-size:15px}
-.status.example{background:var(--warn-soft);color:var(--ink)}
-.status.real{background:var(--accent-soft)}
-.status b{font-weight:600}
-.dot{width:10px;height:10px;border-radius:50%;margin-top:6px;flex:none;background:var(--warn)}
-.status.real .dot{background:var(--accent)}
-button,select,input{font:inherit;color:inherit}
-.btn{border:1px solid var(--line);background:var(--surface);padding:8px 14px;border-radius:8px;cursor:pointer;font-weight:600}
-.btn:hover{border-color:var(--accent)}
-.btn.primary{background:var(--accent);color:var(--surface);border-color:var(--accent)}
-:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.filters{display:flex;flex-wrap:wrap;gap:12px;align-items:end}
-.filters label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--ink-2);font-weight:600}
-.filters select,.filters input{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-width:0}
-.filters input{width:min(320px,80vw)}
-.chip{display:inline-flex;align-items:center;gap:6px;background:var(--accent-soft);color:var(--ink);border-radius:999px;padding:5px 12px;font-size:14px;font-weight:600;border:0;cursor:pointer}
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
-.kpi{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:4px;min-width:0}
-.kpi .v{font-family:var(--display);font-size:28px;font-weight:700;line-height:1.15;font-variant-numeric:tabular-nums}
-.kpi .s{font-size:14px;color:var(--ink-2)}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:16px}
-.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:12px;min-width:0}
-.panel .hd{display:flex;justify-content:space-between;gap:12px;align-items:baseline;flex-wrap:wrap}
-.panel .hd span{font-size:14px;color:var(--ink-3)}
-svg text{font-family:var(--body);fill:var(--ink-2);font-size:12px}
-svg .gl{stroke:var(--line);stroke-width:1}
-.chart{position:relative;width:100%}
-.tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--bg);padding:8px 10px;border-radius:8px;font-size:13px;line-height:1.35;white-space:nowrap;transform:translate(-50%,-110%);z-index:5}
-.hbars{display:flex;flex-direction:column;gap:6px}
-.hbar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;padding:6px 8px;border-radius:8px;cursor:pointer;border:0;background:none;text-align:left;width:100%}
-.hbar:hover{background:var(--bg)}
-.hbar .n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:15px}
-.hbar .a{font-variant-numeric:tabular-nums;font-size:15px;font-weight:600}
-.hbar .track{grid-column:1/-1;height:8px;border-radius:4px;background:var(--bar-soft);overflow:hidden}
-.hbar .fill{height:100%;border-radius:4px;background:var(--bar)}
-.alerts{display:flex;flex-direction:column;gap:10px}
-.alert{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;padding:12px;border-radius:10px;background:var(--warn-soft)}
-.alert.crit{background:var(--crit-soft)}
-.tag{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:2px 8px;border-radius:999px;background:var(--surface);color:var(--warn);align-self:start}
-.alert.crit .tag{color:var(--crit)}
-.alert p{margin:0;font-size:15px}
-.alert small{grid-column:2;color:var(--ink-2)}
-.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
-table{width:100%;border-collapse:collapse;font-size:15px;min-width:720px}
-th,td{padding:9px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
-th{font-size:13px;color:var(--ink-2);font-weight:600;cursor:pointer;user-select:none;background:var(--bg);position:sticky;top:0}
-td.r,th.r{text-align:right}
-td.mono{font-family:var(--mono);font-size:13px;color:var(--ink-2)}
-tr:last-child td{border-bottom:0}
-.pager{display:flex;gap:10px;align-items:center;justify-content:flex-end;flex-wrap:wrap;font-size:14px;color:var(--ink-2)}
-.drop{border:2px dashed var(--line);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:12px;background:var(--surface)}
-.drop.over{border-color:var(--accent);background:var(--accent-soft)}
-.drop ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;max-width:75ch}
-code{font-family:var(--mono);font-size:13px;background:var(--bg);padding:1px 6px;border-radius:5px;word-break:break-all}
-.copy{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-footer{font-size:14px;color:var(--ink-3);max-width:80ch}
-footer a,.drop a{color:var(--accent)}
-.empty{color:var(--ink-3);font-size:15px;padding:12px 0}
-@media (prefers-reduced-motion:no-preference){.fill{transition:width .4s ease}}
-</style>
-<style>
-body{margin:0}
-.updated{display:inline-flex;gap:8px;align-items:center;font-size:14px;color:var(--ink-2);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 12px}
-.updated .dot{margin:0;background:var(--accent)}
-.contratos{display:flex;flex-direction:column}
-.ct{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 16px;padding:12px 0;border-bottom:1px solid var(--line)}
-.ct:last-child{border-bottom:0}
-.ct .obj{font-size:15px}
-.ct .meta{font-size:14px;color:var(--ink-2);grid-column:1/-1;display:flex;flex-wrap:wrap;gap:4px 14px}
-.ct .val{font-weight:600;font-variant-numeric:tabular-nums;text-align:right}
-.ct a{color:var(--accent)}
-.pill{font-size:12px;font-weight:700;padding:1px 8px;border-radius:999px;background:var(--accent-soft)}
-.pill.fim{background:var(--warn-soft);color:var(--warn)}
-.loading{padding:40px 0;text-align:center;color:var(--ink-2)}
-.abas{display:flex;gap:6px;overflow-x:auto;border-bottom:1px solid var(--line);scrollbar-width:thin;margin-bottom:4px}
-.aba{border:0;background:none;padding:10px 14px;font-weight:600;color:var(--ink-2);border-bottom:3px solid transparent;cursor:pointer;white-space:nowrap}
-.aba:hover{color:var(--ink)}
-.aba[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent)}
-.secao[hidden]{display:none}
-#secao-geral:not([hidden]){display:flex;flex-direction:column;gap:22px}
-.btn[disabled]{opacity:.5;cursor:default}
-</style>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="css/prefita.css">
+<script>try{var t=localStorage.getItem("prefita-tema");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <div>
-      <div class="eyebrow">Prefeitura e Câmara de Itaberá · SP</div>
-      <h1>Para onde vai o dinheiro de Itaberá</h1>
-      <p>Gastos, folha de pagamento, diárias, contratos, receitas e emendas da Prefeitura, com dados públicos do portal de transparência da Prefeitura, do Tribunal de Contas do Estado, do Tesouro e do PNCP, atualizados todo dia.</p>
+<header class="topbar">
+  <div class="topbar-in">
+    <a class="brand" href="#/" aria-label="Prefita, início">
+      <span class="brand-mark"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19v-4M10 19v-8M15 19v-5M20 19V7"/></svg></span>
+      <span><b>Prefita</b><small>Itaberá · SP</small></span>
+    </a>
+    <nav class="nav" id="nav" aria-label="Seções"></nav>
+    <div class="top-actions">
+      <span class="live" id="live"><i></i><span>Carregando…</span></span>
+      <button class="icon-btn" id="tema" type="button" aria-label="Trocar tema"></button>
     </div>
-    <span class="updated" id="updated"><span class="dot"></span><span id="updatedText">Carregando…</span></span>
-  </header>
-
-  <nav class="abas" id="abas" role="tablist" aria-label="Seções do painel"></nav>
-
-  <div id="secoes">
-  <div id="secao-geral" class="secao">
-  <div class="filters">
-    <label for="fAno">Ano<select id="fAno"></select></label>
-    <label for="fMes">Mês<select id="fMes"></select></label>
-    <label for="fOrgao">Órgão<select id="fOrgao"><option value="">Prefeitura e Câmara</option><option value="P">Prefeitura</option><option value="C">Câmara</option></select></label>
-    <label for="fBusca">Buscar fornecedor, empenho ou contrato<input id="fBusca" type="search" placeholder="Ex.: posto, 1021-2025"></label>
-    <span id="activeChip"></span>
   </div>
+</header>
 
-  <div id="app"><div class="loading">Carregando os dados de Itaberá…</div></div>
-  </div>
-  </div>
+<main class="page">
+  <div class="toolbar" id="toolbar" hidden></div>
+  <div id="views"></div>
 
-  <footer>
-    Fontes: <a href="https://fiorilli.itabera.online/transparencia/" target="_blank" rel="noopener">Portal da Transparência da Prefeitura</a> (gastos do dia, folha, diárias, licitações, contratos, receitas), <a href="https://siconfi.tesouro.gov.br/" target="_blank" rel="noopener">SICONFI/Tesouro</a> (limite de gasto com pessoal), <a href="https://especiais.transferegov.sistema.gov.br/" target="_blank" rel="noopener">Transferegov</a> (emendas Pix), <a href="https://transparencia.tce.sp.gov.br/" target="_blank" rel="noopener">Portal da Transparência Municipal do TCE-SP</a> (empenhos enviados pelo próprio município ao sistema Audesp, normalmente com algumas semanas de atraso) e <a href="https://pncp.gov.br/app/contratos?q=&amp;orgaos=46634374000160" target="_blank" rel="noopener">PNCP</a> (contratos publicados pela Prefeitura, CNPJ 46.634.374/0001-60). Os sinais de atenção são automáticos e servem para orientar a consulta, não são acusações. Código e histórico dos dados: <a href="https://github.com/Paul0Gustav0/prefita" target="_blank" rel="noopener">github.com/Paul0Gustav0/prefita</a>.
+  <footer class="foot">
+    <div><b>De onde vêm os dados</b><a href="https://fiorilli.itabera.online/transparencia/" target="_blank" rel="noopener">Portal da Transparência da Prefeitura</a> (gastos do dia, folha, diárias, licitações, receitas), <a href="https://transparencia.tce.sp.gov.br/" target="_blank" rel="noopener">TCE-SP</a> (empenhos enviados ao Audesp, com algumas semanas de atraso), <a href="https://pncp.gov.br/app/contratos?q=&amp;orgaos=46634374000160" target="_blank" rel="noopener">PNCP</a> (contratos, CNPJ 46.634.374/0001-60), <a href="https://siconfi.tesouro.gov.br/" target="_blank" rel="noopener">SICONFI</a> (limite com pessoal) e <a href="https://especiais.transferegov.sistema.gov.br/" target="_blank" rel="noopener">Transferegov</a> (emendas).</div>
+    <div><b>Como ler os sinais</b>Os pontos de atenção são calculados automaticamente para orientar a consulta. Não são acusações: sempre confira o documento original.</div>
+    <div><b>Código aberto</b>Coleta diária às 6h15 pelo GitHub Actions. Código e histórico dos dados em <a href="https://github.com/Paul0Gustav0/prefita" target="_blank" rel="noopener">github.com/Paul0Gustav0/prefita</a>.</div>
   </footer>
-</div>
+</main>
 
-<template id="tplApp">
-  <section class="kpis" id="kpis" aria-label="Resumo"></section>
-  <div class="grid" style="margin-top:22px">
-    <section class="panel">
-      <div class="hd"><h2>Gasto empenhado por mês</h2><span id="mesNote"></span></div>
-      <div class="chart" id="chartMes"></div>
-    </section>
-    <section class="panel">
-      <div class="hd"><h2>Quem mais recebeu</h2><span>Toque num nome para ver só os empenhos dele</span></div>
-      <div class="hbars" id="topForn"></div>
-    </section>
-    <section class="panel">
-      <div class="hd"><h2>Contratos recentes</h2><span id="ctNote">Publicados pela Prefeitura no PNCP</span></div>
-      <div class="contratos" id="contratos"></div>
-      <div class="pager"><button class="btn" id="ctMore" type="button">Mostrar mais</button></div>
-    </section>
-    <section class="panel">
-      <div class="hd"><h2>Pontos para olhar de perto</h2><span>Sinais automáticos, não são acusações</span></div>
-      <div class="alerts" id="alerts"></div>
-    </section>
-  </div>
-  <section class="panel" style="margin-top:22px">
-    <div class="hd"><h2>Todos os empenhos</h2><span id="tblCount"></span></div>
-    <div class="tablewrap"><table>
-      <thead><tr>
-        <th data-k="dt">Data</th><th data-k="nr">Empenho</th><th data-k="forn">Fornecedor ou credor</th><th data-k="orgao">Órgão</th><th data-k="liq" class="r">Empenhado</th><th data-k="pago" class="r">Pago</th>
-      </tr></thead>
-      <tbody id="tbody"></tbody>
-    </table></div>
-    <div class="pager"><span id="pgInfo"></span><button class="btn" id="pgPrev" type="button">Anterior</button><button class="btn" id="pgNext" type="button">Próxima</button></div>
-  </section>
-</template>
-
-<script src="js/prefita-base.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/dados-tce.js"></script>
+<!-- Seções: cada arquivo chama Prefita.registrarSecao(...). Para criar uma aba nova, acrescente uma linha aqui. -->
+<script src="js/secoes/visao-geral.js"></script>
+<script src="js/secoes/contratos.js"></script>
+<script src="js/secoes/empenhos.js"></script>
 <script src="js/secoes/gastos-do-dia.js"></script>
 <script src="js/secoes/folha.js"></script>
 <script src="js/secoes/diarias.js"></script>
 <script src="js/secoes/licitacoes.js"></script>
 <script src="js/secoes/receitas.js"></script>
 <script src="js/secoes/emendas.js"></script>
-<script>
-(function(){
-const MESES=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
-const MES_ABBR=["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
-const BRL=new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL",maximumFractionDigits:2});
-const BRL0=new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL",maximumFractionDigits:0});
-const NUM=new Intl.NumberFormat("pt-BR");
-function compact(v){if(Math.abs(v)>=1e6)return "R$ "+(v/1e6).toLocaleString("pt-BR",{maximumFractionDigits:1})+" mi";if(Math.abs(v)>=1e3)return "R$ "+(v/1e3).toLocaleString("pt-BR",{maximumFractionDigits:0})+" mil";return BRL0.format(v)}
-const $=id=>document.getElementById(id);
-const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-// Limite de dispensa por valor para compras e serviços comuns (Lei 14.133, valor atualizado pelo Decreto 12.343/2024).
-const LIMITE_DISPENSA=62725.59;
-const SEM_DOC=/sem cpf|identifica[cç][aã]o especial|pessoal|folha|obriga[cç][oõ]es patronais|inss|i\.n\.s\.s|previd/i;
-
-const cache={};let DATA=[],CONTRATOS=[],RESUMO=null;
-const st={ano:"",mes:"",orgao:"",busca:"",forn:"",sort:"dt",dir:-1,page:0,ct:8};
-const PG=25;
-
-// Cada lançamento do TCE é um evento: E empenhado, R reforço, A anulação, L liquidado, P pago.
-// vl = efeito no valor empenhado (E e R somam, A subtrai); pg = valor pago.
-async function carregarAno(ano){
-  if(!cache[ano]){const r=await fetch(`data/empenhos-${ano}.json`);if(!r.ok)throw new Error("HTTP "+r.status);
-    const j=await r.json();const agg=new Map();
-    const ev=j.r.map(x=>{const [o,m,dm,nr,fi,ii,v,e]=x;const [dd,mm]=String(dm).split("/");
-      const d={orgao:o,ano:+ano,mes:m,dt:dd&&mm?new Date(+ano,+mm-1,+dd):null,nr,forn:j.f[fi],idf:j.i[ii],ev:e,
-        vl:e==="E"||e==="R"?v:e==="A"?-v:0,pg:e==="P"?v:0};
-      const k=o+"|"+nr;const a=agg.get(k)||agg.set(k,{liq:0,pg:0}).get(k);a.liq+=d.vl;a.pg+=d.pg;return d});
-    for(const d of ev)if(d.ev==="E"){const a=agg.get(d.orgao+"|"+d.nr);d.liq=a.liq;d.pago=a.pg}
-    cache[ano]=ev}
-  return cache[ano];
-}
-
-function filtrado(ignoreMes){
-  const b=st.busca.trim().toLowerCase();
-  return DATA.filter(d=>(ignoreMes||!st.mes||d.mes==st.mes)&&(!st.orgao||d.orgao===st.orgao)&&(!st.forn||d.forn===st.forn)&&(!b||d.forn.toLowerCase().includes(b)||d.nr.toLowerCase().includes(b)));
-}
-const sum=a=>a.reduce((s,d)=>s+d.vl,0);
-const sumPg=a=>a.reduce((s,d)=>s+d.pg,0);
-function groupSum(a,k){const m=new Map();for(const d of a){const key=d[k]||"Não informado";m.set(key,(m.get(key)||0)+d.vl)}return [...m.entries()].sort((x,y)=>y[1]-x[1])}
-
-function render(){
-  const rows=filtrado(false), rowsAno=filtrado(true);
-  const total=sum(rows),pago=sumPg(rows);const emps=rows.filter(d=>d.ev==="E");const nForn=new Set(emps.map(d=>d.forn)).size;
-  const top=groupSum(rows,"forn").filter(([,v])=>v>0);
-  const semFolha=top.filter(([f])=>!SEM_DOC.test(f));
-  const periodo=(st.mes?MESES[st.mes-1]+" de ":"")+st.ano;
-  $("kpis").innerHTML=[
-    ["Empenhado",compact(total),periodo+", já descontadas as anulações"],
-    ["Pago",compact(pago),"pagamentos feitos no período, inclusive de empenhos de anos anteriores"],
-    ["Empenhos",NUM.format(emps.length),NUM.format(nForn)+" fornecedores e credores diferentes"],
-    ["Maior fornecedor",semFolha[0]?compact(semFolha[0][1]):"–",semFolha[0]?esc(semFolha[0][0]):"sem dados"],
-  ].map(k=>`<div class="kpi"><div class="eyebrow">${k[0]}</div><div class="v">${k[1]}</div><div class="s">${k[2]}</div></div>`).join("");
-  $("activeChip").innerHTML=st.forn?`<button class="chip" id="clearForn" type="button" aria-label="Remover filtro de fornecedor">${esc(st.forn)} ✕</button>`:"";
-  if(st.forn)$("clearForn").onclick=()=>{st.forn="";st.page=0;render()};
-  chartMes(rowsAno);
-  hbars($("topForn"),top.slice(0,10),total,k=>{st.forn=k;st.page=0;render();$("tbody").closest("section").scrollIntoView({behavior:"smooth",block:"start"})});
-  alerts(emps,total);
-  contratos();
-  table(emps);
-}
-function hbars(el,items,total,onClick){
-  if(!items.length){el.innerHTML=`<div class="empty">Nenhum empenho com esses filtros.</div>`;return}
-  const max=items[0][1];
-  el.innerHTML=items.map(([k,v],i)=>`<button class="hbar" type="button" data-i="${i}"><span class="n" title="${esc(k)}">${esc(k)}</span><span class="a">${compact(v)} <span class="muted" style="font-weight:400">${total?Math.round(v/total*100):0}%</span></span><span class="track"><span class="fill" style="width:${Math.max(1,v/max*100)}%;display:block"></span></span></button>`).join("");
-  el.querySelectorAll(".hbar").forEach(b=>b.onclick=()=>onClick(items[+b.dataset.i][0]));
-}
-function chartMes(rowsAno){
-  const el=$("chartMes");const W=Math.max(320,el.clientWidth||560),H=240,P={l:58,r:8,t:12,b:28};
-  const by=new Array(12).fill(0),pgm=new Array(12).fill(0);for(const d of rowsAno)if(d.mes){by[d.mes-1]+=d.vl;pgm[d.mes-1]+=d.pg}
-  const max=Math.max(...by.map(v=>Math.max(v,0)),1);
-  const step=Math.pow(10,Math.floor(Math.log10(max)));const nice=[1,2,2.5,5,10].map(x=>x*step).find(x=>max/x<=5)||step*10;const top=Math.ceil(max/nice)*nice;
-  const iw=W-P.l-P.r,ih=H-P.t-P.b,bw=iw/12,y=v=>P.t+ih-(v/top)*ih;
-  let g="";for(let v=0;v<=top+1e-9;v+=nice)g+=`<line class="gl" x1="${P.l}" x2="${W-P.r}" y1="${y(v)}" y2="${y(v)}"/><text x="${P.l-8}" y="${y(v)+4}" text-anchor="end">${compact(v).replace("R$ ","")}</text>`;
-  let b="";for(let i=0;i<12;i++){const v=by[i]||0,x=P.l+i*bw+bw*0.18,w=bw*0.64,sel=st.mes==i+1,hgt=Math.max(0,P.t+ih-y(v));
-    const r=Math.min(4,w/2,hgt);
-    b+=`<g class="bm" data-i="${i}"><rect x="${P.l+i*bw}" y="${P.t}" width="${bw}" height="${ih}" fill="transparent" style="cursor:pointer"/>${v>0?`<path d="M${x},${P.t+ih} V${y(v)+r} q0,-${r} ${r},-${r} H${x+w-r} q${r},0 ${r},${r} V${P.t+ih} Z" fill="${sel||!st.mes?"var(--bar)":"var(--bar-soft)"}"/>`:""}<text x="${x+w/2}" y="${H-8}" text-anchor="middle">${MES_ABBR[i]}</text></g>`}
-  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" role="img" aria-label="Gasto empenhado por mês em ${st.ano}">${g}${b}<line x1="${P.l}" x2="${W-P.r}" y1="${P.t+ih}" y2="${P.t+ih}" stroke="var(--ink-3)"/></svg><div class="tip" hidden></div>`;
-  $("mesNote").textContent=st.mes?"Toque no mês de novo para ver o ano todo":"Toque num mês para filtrar";
-  const tip=el.querySelector(".tip");
-  el.querySelectorAll(".bm").forEach(n=>{const i=+n.dataset.i;
-    n.addEventListener("mousemove",e=>{const rc=el.getBoundingClientRect();tip.hidden=false;tip.style.left=(e.clientX-rc.left)+"px";tip.style.top=(e.clientY-rc.top)+"px";tip.innerHTML=`<b>${MESES[i]} ${st.ano}</b><br>${by[i]||pgm[i]?`Empenhado: ${BRL.format(by[i])}<br>Pago: ${BRL.format(pgm[i])}`:"Ainda sem dados do TCE"}`});
-    n.addEventListener("mouseleave",()=>tip.hidden=true);
-    n.addEventListener("click",()=>{st.mes=st.mes==i+1?"":String(i+1);$("fMes").value=st.mes;st.page=0;render()});
-  });
-}
-function alerts(rows,total){
-  const out=[];const fora=d=>SEM_DOC.test(d.idf+" "+d.forn);
-  const g=new Map();for(const d of rows){if(fora(d))continue;const k=d.forn+"|"+d.ano+"|"+d.mes;(g.get(k)||g.set(k,[]).get(k)).push(d)}
-  const frac=new Map();
-  for(const [k,l] of g){const small=l.filter(d=>d.vl<LIMITE_DISPENSA);const s=sum(small);if(small.length>=3&&s>LIMITE_DISPENSA){const [f,a,m]=k.split("|");const cur=frac.get(f);if(!cur||s>cur.s)frac.set(f,{f,a,m,n:small.length,s,meses:(cur?.meses||0)+1});else cur.meses++}}
-  for(const x of frac.values())out.push({lvl:"warn",tag:"Fracionamento?",forn:x.f,txt:`<b>${esc(x.f)}</b> recebeu ${x.n} empenhos em ${MESES[x.m-1]}/${x.a}, cada um abaixo de ${BRL0.format(LIMITE_DISPENSA)}, somando ${BRL0.format(x.s)}${x.meses>1?` (aconteceu em ${x.meses} meses)`:""}.`,why:"Dividir uma compra em partes pequenas pode evitar a licitação. Vale checar se existe contrato ou ata de registro de preços para esse fornecedor.",score:x.s});
-  for(const [f,v] of groupSum(rows.filter(d=>!fora(d)),"forn").slice(0,3)){const sh=v/total;if(sh>0.05)out.push({lvl:"warn",tag:"Concentração",forn:f,txt:`<b>${esc(f)}</b> concentra ${(sh*100).toFixed(1).replace(".",",")}% de tudo o que foi empenhado no período (${compact(v)}).`,why:"Não é irregular por si só, mas é bom saber qual contrato sustenta esse volume.",score:v})}
-  const byF=new Map();for(const d of rows){(byF.get(d.forn)||byF.set(d.forn,[]).get(d.forn)).push(d.vl)}
-  const outl=new Map();
-  for(const d of rows){const l=byF.get(d.forn);if(l.length<5||fora(d))continue;const med=[...l].sort((a,b)=>a-b)[Math.floor(l.length/2)];if(d.vl>med*3&&d.vl>20000&&!(outl.get(d.forn)?.d.vl>=d.vl))outl.set(d.forn,{d,med})}
-  for(const {d,med} of outl.values())out.push({lvl:"warn",tag:"Fora do padrão",forn:d.forn,txt:`Empenho <b>${esc(d.nr)}</b> para <b>${esc(d.forn)}</b> de ${BRL0.format(d.vl)}, mais de 3 vezes o valor típico desse fornecedor (${BRL0.format(med)}).`,why:"Pode ser uma compra maior legítima. Confira o histórico do empenho no portal da Prefeitura.",score:d.vl})
-  out.sort((a,b)=>(a.lvl==="crit"?-1:1)-(b.lvl==="crit"?-1:1)||b.score-a.score);
-  const el=$("alerts");
-  if(!out.length){el.innerHTML=`<div class="empty">Nenhum sinal automático com esses filtros.</div>`;return}
-  el.innerHTML=out.slice(0,6).map((a,i)=>`<div class="alert ${a.lvl}"><span class="tag">${a.tag}</span><p>${a.txt} <button class="chip" type="button" data-i="${i}" style="margin-left:4px;padding:2px 10px;font-size:13px">ver empenhos</button></p><small>${a.why}</small></div>`).join("");
-  el.querySelectorAll("button[data-i]").forEach(b=>b.onclick=()=>{st.forn=out[+b.dataset.i].forn;st.page=0;render();$("tbody").closest("section").scrollIntoView({behavior:"smooth",block:"start"})});
-}
-function fmtData(s){if(!s)return "–";const [a,m,d]=s.slice(0,10).split("-");return `${d}/${m}/${a}`}
-function contratos(){
-  const b=st.busca.trim().toLowerCase();const hoje=new Date().toISOString().slice(0,10);const em60=new Date(Date.now()+60*864e5).toISOString().slice(0,10);
-  const l=CONTRATOS.filter(c=>(!st.ano||String(c.assinatura||c.publicado||"").startsWith(st.ano))&&(!b||(c.forn||"").toLowerCase().includes(b)||(c.objeto||"").toLowerCase().includes(b)||(c.num||"").toLowerCase().includes(b)));
-  $("ctNote").textContent=`${NUM.format(l.length)} contratos em ${st.ano} · ${compact(l.reduce((s,c)=>s+(+c.valor||0),0))}`;
-  const el=$("contratos");
-  if(!l.length){el.innerHTML=`<div class="empty">Nenhum contrato publicado no PNCP com esses filtros.</div>`;$("ctMore").hidden=true;return}
-  el.innerHTML=l.slice(0,st.ct).map(c=>{const vence=c.fim&&c.fim>=hoje&&c.fim<=em60;const link=c.ano&&c.seq?`https://pncp.gov.br/app/contratos/46634374000160/${c.ano}/${c.seq}`:"";
-    return `<div class="ct"><div class="obj"><b>${esc(c.forn)}</b><br>${esc((c.objeto||"").slice(0,180))}${(c.objeto||"").length>180?"…":""}</div><div class="val">${BRL.format(+c.valor||0)}</div><div class="meta"><span>Assinado em ${fmtData(c.assinatura)}</span><span>Vigência até ${fmtData(c.fim)}</span>${vence?`<span class="pill fim">vence em breve</span>`:""}${c.categoria?`<span class="pill">${esc(c.categoria)}</span>`:""}${link?`<a href="${link}" target="_blank" rel="noopener">ver no PNCP</a>`:""}</div></div>`}).join("");
-  $("ctMore").hidden=l.length<=st.ct;
-}
-function table(rows){
-  const k=st.sort,dir=st.dir;
-  const s=[...rows].sort((a,b)=>{const x=a[k],y=b[k];return (x>y?1:x<y?-1:0)*dir});
-  const pages=Math.max(1,Math.ceil(s.length/PG));st.page=Math.min(st.page,pages-1);
-  const pg=s.slice(st.page*PG,(st.page+1)*PG);
-  $("tbody").innerHTML=pg.length?pg.map(d=>`<tr><td class="num">${d.dt?d.dt.toLocaleDateString("pt-BR"):"–"}</td><td class="mono">${esc(d.nr)}</td><td>${esc(d.forn)}</td><td>${d.orgao==="C"?"Câmara":"Prefeitura"}</td><td class="r num">${BRL.format(d.liq)}</td><td class="r num">${d.pago>=d.liq-0.01&&d.liq>0?`<span class="pill">${BRL.format(d.pago)}</span>`:BRL.format(d.pago)}</td></tr>`).join(""):`<tr><td colspan="6" class="empty">Nenhum empenho com esses filtros.</td></tr>`;
-  $("tblCount").textContent=NUM.format(s.length)+" empenhos emitidos no período";
-  $("pgInfo").textContent=`Página ${st.page+1} de ${pages}`;
-  $("pgPrev").disabled=st.page===0;$("pgNext").disabled=st.page>=pages-1;
-  document.querySelectorAll("th[data-k]").forEach(th=>{const base=th.textContent.replace(/ [▲▼]$/,"");th.textContent=base+(th.dataset.k===k?(dir>0?" ▲":" ▼"):"")});
-}
-
-async function trocarAno(ano){
-  st.ano=String(ano);st.mes="";st.page=0;st.ct=8;$("fMes").value="";
-  $("tbody").innerHTML=`<tr><td colspan="6" class="empty">Carregando ${ano}…</td></tr>`;
-  try{DATA=await carregarAno(ano)}catch(e){DATA=[]}
-  render();
-}
-
-async function init(){
-  try{
-    RESUMO=await (await fetch("data/resumo.json",{cache:"no-cache"})).json();
-  }catch(e){$("app").innerHTML=`<div class="loading">Os dados ainda não foram coletados. A primeira coleta roda automaticamente; volte em alguns minutos.</div>`;$("updatedText").textContent="Sem dados ainda";return}
-  const at=new Date(RESUMO.atualizado_em);
-  $("updatedText").textContent="Atualizado em "+at.toLocaleDateString("pt-BR")+" às "+at.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
-  try{CONTRATOS=await (await fetch("data/contratos.json",{cache:"no-cache"})).json()}catch(e){CONTRATOS=[]}
-  $("app").innerHTML="";$("app").append($("tplApp").content.cloneNode(true));
-  const anos=[...RESUMO.anos].sort((a,b)=>b-a);
-  $("fAno").innerHTML=anos.map(a=>`<option value="${a}">${a}</option>`).join("");
-  $("fMes").innerHTML=`<option value="">O ano todo</option>`+MESES.map((m,i)=>`<option value="${i+1}">${m}</option>`).join("");
-  $("fAno").onchange=e=>trocarAno(e.target.value);
-  $("fMes").onchange=e=>{st.mes=e.target.value;st.page=0;render()};
-  $("fOrgao").onchange=e=>{st.orgao=e.target.value;st.page=0;render()};
-  $("fBusca").oninput=e=>{st.busca=e.target.value;st.page=0;render()};
-  document.querySelectorAll("th[data-k]").forEach(th=>th.onclick=()=>{const k=th.dataset.k;st.dir=st.sort===k?-st.dir:(k==="liq"||k==="pago"||k==="dt"?-1:1);st.sort=k;render()});
-  $("pgPrev").onclick=()=>{st.page--;render()};$("pgNext").onclick=()=>{st.page++;render()};
-  $("ctMore").onclick=()=>{st.ct+=10;contratos()};
-  let rt;addEventListener("resize",()=>{clearTimeout(rt);rt=setTimeout(()=>chartMes(filtrado(true)),150)});
-  if(anos.length)await trocarAno(anos[0]);
-}
-init();
-})();
-</script>
+<script>Prefita.iniciar();</script>
 </body>
 </html>
