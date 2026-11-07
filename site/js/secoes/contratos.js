@@ -11,9 +11,9 @@
       const f = P.filtros;
       if (!el.innerHTML) el.innerHTML = P.ui.carregando(5);
       const todos = await T.carregarContratos();
-      const b = (f.busca || "").trim().toLowerCase();
+      const b = (f.busca || "").trim();
       const hoje = new Date().toISOString().slice(0, 10), em60 = new Date(Date.now() + 60 * 864e5).toISOString().slice(0, 10);
-      const doAno = todos.filter((c) => String(c.assinatura || c.publicado || "").startsWith(f.ano) && (!b || [c.forn, c.objeto, c.num].some((x) => String(x || "").toLowerCase().includes(b))));
+      const doAno = todos.filter((c) => String(c.assinatura || c.publicado || "").startsWith(f.ano) && (!b || P.contem([c.forn, c.objeto, c.num, c.doc], b)));
       const l = doAno.filter((c) => !cat || c.categoria === cat);
       const tot = l.reduce((s, c) => s + (+c.valor || 0), 0);
       const vencendo = todos.filter((c) => c.fim && c.fim >= hoje && c.fim <= em60);

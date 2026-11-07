@@ -73,6 +73,7 @@
     info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
     left: '<path d="m15 18-6-6 6-6"/>',
     right: '<path d="m9 18 6-6-6-6"/>',
+    download: '<path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 17v3h16v-3"/>',
     building: '<rect x="4" y="3" width="16" height="18" rx="1"/><path d="M9 7h1M14 7h1M9 11h1M14 11h1M9 15h1M14 15h1M10 21v-3h4v3"/>',
   };
   P.ico = (n, cls = "") => `<svg class="ico ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONES[n] || ICONES.doc}</svg>`;
@@ -177,23 +178,53 @@
     });
   };
 
-  /* Tabela paginada e ordenável.
-     cols: [{k, t, r?(alinha à direita), html(row)?, val(row)?}], opts {porPagina, ordem:{k,dir}, vazio} */
+  /* ---------- busca sem acento ---------- */
+  // norm("São JOÃO") -> "sao joao". contem(texto, busca): todas as palavras da busca aparecem no texto.
+  P.norm = (s) => String(s ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  P.contem = (texto, busca) => { const t = P.norm(Array.isArray(texto) ? texto.join(" ") : texto); return P.norm(busca).split(/\s+/).filter(Boolean).every((w) => t.includes(w)); };
+
+  /* Tabela paginada, ordenável, com busca própria e download em CSV.
+     cols: [{k, t, r?(alinha à direita), html(row)?, val(row)?, cls?}]
+     opts {porPagina, ordem:{k,dir}, vazio, unidade, busca (true/false; padrão: mais de 10 linhas), arquivo (nome do CSV)} */
   ui.tabela = (el, linhas, cols, opts = {}) => {
-    const st = el._st || (el._st = { k: opts.ordem?.k || cols[0].k, dir: opts.ordem?.dir || -1, pg: 0 });
+    const st = el._st || (el._st = { k: opts.ordem?.k || cols[0].k, dir: opts.ordem?.dir || -1, pg: 0, q: "" });
     if (opts.resetar) st.pg = 0;
     const PG = opts.porPagina || 25;
     const val = (c, r) => (c.val ? c.val(r) : r[c.k]);
+    const comBusca = opts.busca ?? linhas.length > 10;
+    const unidade = opts.unidade || "linhas";
+    const txt = linhas.length && comBusca ? linhas.map((r) => P.norm(cols.map((c) => { const v = val(c, r); return v instanceof Date ? v.toLocaleDateString("pt-BR") : v; }).join(" "))) : [];
+    el.innerHTML = `${comBusca || linhas.length ? `<div class="tbl-bar">${comBusca ? `<label class="field grow">${P.ico("search")}<span class="sr">Buscar na tabela</span><input type="search" data-q placeholder="${esc(opts.placeholder || "Buscar nesta lista")}" autocomplete="off"></label>` : "<span></span>"}<button class="btn sm ghost" type="button" data-csv title="Baixar a lista filtrada como planilha (CSV)">${P.ico("download")}Baixar CSV</button></div>` : ""}<div data-corpo></div>`;
+    const corpo = el.querySelector("[data-corpo]"), inp = el.querySelector("[data-q]");
+    const filtradas = () => { if (!st.q.trim()) return linhas; const ws = P.norm(st.q).split(/\s+/).filter(Boolean); return linhas.filter((_, i) => ws.every((w) => txt[i].includes(w))); };
+    const ordenadas = () => { const c0 = cols.find((c) => c.k === st.k) || cols[0]; return [...filtradas()].sort((a, b) => { const x = val(c0, a), y = val(c0, b); return (x > y ? 1 : x < y ? -1 : 0) * st.dir; }); };
     const draw = () => {
-      const c0 = cols.find((c) => c.k === st.k) || cols[0];
-      const s = [...linhas].sort((a, b) => { const x = val(c0, a), y = val(c0, b); return (x > y ? 1 : x < y ? -1 : 0) * st.dir; });
+      const s = ordenadas();
       const pages = Math.max(1, Math.ceil(s.length / PG));
-      st.pg = Math.min(st.pg, pages - 1);
+      st.pg = Math.max(0, Math.min(st.pg, pages - 1));
       const pg = s.slice(st.pg * PG, (st.pg + 1) * PG);
-      el.innerHTML = `<div class="table-wrap"><table><thead><tr>${cols.map((c) => `<th data-k="${c.k}" class="${c.r ? "r" : ""}" ${c.k === st.k ? `aria-sort="${st.dir > 0 ? "ascending" : "descending"}"` : ""}>${esc(c.t)}<span class="ar">${st.dir > 0 ? "↑" : "↓"}</span></th>`).join("")}</tr></thead><tbody>${pg.length ? pg.map((r) => `<tr>${cols.map((c) => `<td class="${c.r ? "r num" : ""} ${c.cls || ""}">${c.html ? c.html(r) : esc(val(c, r))}</td>`).join("")}</tr>`).join("") : `<tr><td colspan="${cols.length}">${ui.vazio(opts.vazio)}</td></tr>`}</tbody></table></div>
-        <div class="card-ft" style="margin:0 -20px -20px"><span>${NUM.format(s.length)} ${esc(opts.unidade || "linhas")} · página ${st.pg + 1} de ${pages}</span><span class="pager"><button class="btn sm" data-p="-1" ${st.pg === 0 ? "disabled" : ""}>${P.ico("left")}Anterior</button><button class="btn sm" data-p="1" ${st.pg >= pages - 1 ? "disabled" : ""}>Próxima${P.ico("right")}</button></span></div>`;
-      el.querySelectorAll("th[data-k]").forEach((th) => (th.onclick = () => { const k = th.dataset.k; const c = cols.find((x) => x.k === k); st.dir = st.k === k ? -st.dir : c.r || k === "dt" ? -1 : 1; st.k = k; draw(); }));
-      el.querySelectorAll("[data-p]").forEach((b) => (b.onclick = () => { st.pg += +b.dataset.p; draw(); el.scrollIntoView({ block: "nearest" }); }));
+      const vazio = st.q.trim() ? `<div class="empty">${P.ico("search")}<span>Nada encontrado para “${esc(st.q)}”.</span><button class="btn sm" type="button" data-limpar-busca>Limpar busca</button></div>` : ui.vazio(opts.vazio);
+      const de = s.length ? st.pg * PG + 1 : 0, ate = st.pg * PG + pg.length;
+      corpo.innerHTML = `<div class="table-wrap"><table><thead><tr>${cols.map((c) => `<th data-k="${c.k}" class="${c.r ? "r" : ""}" tabindex="0" ${c.k === st.k ? `aria-sort="${st.dir > 0 ? "ascending" : "descending"}"` : ""}>${esc(c.t)}<span class="ar">${st.dir > 0 ? "↑" : "↓"}</span></th>`).join("")}</tr></thead><tbody>${pg.length ? pg.map((r) => `<tr>${cols.map((c) => `<td data-label="${esc(c.t)}" class="${c.r ? "r num" : ""} ${c.cls || ""}"><div class="cv">${c.html ? c.html(r) : esc(val(c, r))}</div></td>`).join("")}</tr>`).join("") : `<tr><td colspan="${cols.length}">${vazio}</td></tr>`}</tbody></table></div>
+        <div class="card-ft tbl-ft"><span>${s.length ? `${NUM.format(de)}–${NUM.format(ate)} de ${NUM.format(s.length)} ${esc(unidade)}` : `0 ${esc(unidade)}`}${st.q.trim() && s.length !== linhas.length ? ` <span class="faint">(de ${NUM.format(linhas.length)})</span>` : ""}</span><span class="pager">${pages > 2 ? `<button class="btn sm ghost" data-ir="0" ${st.pg === 0 ? "disabled" : ""} aria-label="Primeira página">«</button>` : ""}<button class="btn sm" data-p="-1" ${st.pg === 0 ? "disabled" : ""}>${P.ico("left")}<span>Anterior</span></button><span class="pg-n">${st.pg + 1} / ${pages}</span><button class="btn sm" data-p="1" ${st.pg >= pages - 1 ? "disabled" : ""}><span>Próxima</span>${P.ico("right")}</button>${pages > 2 ? `<button class="btn sm ghost" data-ir="${pages - 1}" ${st.pg >= pages - 1 ? "disabled" : ""} aria-label="Última página">»</button>` : ""}</span></div>`;
+      const ordenar = (th) => { const k = th.dataset.k; const c = cols.find((x) => x.k === k); st.dir = st.k === k ? -st.dir : c.r || k === "dt" ? -1 : 1; st.k = k; st.pg = 0; draw(); };
+      corpo.querySelectorAll("th[data-k]").forEach((th) => { th.onclick = () => ordenar(th); th.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); ordenar(th); } }; });
+      const topo = () => { const r = el.getBoundingClientRect(); if (r.top < 0) window.scrollBy({ top: r.top - 130, behavior: "smooth" }); };
+      corpo.querySelectorAll("[data-p]").forEach((b) => (b.onclick = () => { st.pg += +b.dataset.p; draw(); topo(); }));
+      corpo.querySelectorAll("[data-ir]").forEach((b) => (b.onclick = () => { st.pg = +b.dataset.ir; draw(); topo(); }));
+      const lb = corpo.querySelector("[data-limpar-busca]"); if (lb) lb.onclick = () => { st.q = ""; if (inp) { inp.value = ""; inp.focus(); } draw(); };
+    };
+    if (inp) { inp.value = st.q; let t; inp.oninput = () => { clearTimeout(t); t = setTimeout(() => { st.q = inp.value; st.pg = 0; draw(); }, 120); }; }
+    const csv = el.querySelector("[data-csv]");
+    if (csv) csv.onclick = () => {
+      const q = (v) => { if (v instanceof Date) v = v.toLocaleDateString("pt-BR"); if (typeof v === "number") v = String(v).replace(".", ","); v = String(v ?? ""); return /[;"\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v; };
+      const rows = [cols.map((c) => q(c.t)).join(";"), ...ordenadas().map((r) => cols.map((c) => q(val(c, r))).join(";"))];
+      const blob = new Blob(["\ufeff" + rows.join("\r\n")], { type: "text/csv;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = (opts.arquivo || "prefita-" + (ativa?.id || "lista")) + ".csv";
+      document.body.append(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
     };
     draw();
   };
@@ -206,14 +237,34 @@
   P.tabela = (el, colunas, linhas, o = {}) => {
     const cols = colunas.map((c, i) => ({ k: "c" + i, t: c.t, r: c.r, cls: c.mono ? "mono" : "", val: (l) => (typeof c.k === "function" ? c.k(l) : l[c.k]),
       html: (l) => { const v = typeof c.k === "function" ? c.k(l) : l[c.k]; return c.f ? c.f(v, l) : esc(v); } }));
-    el._st = null;
-    ui.tabela(el, linhas, cols, { porPagina: o.porPagina, ordem: { k: "c" + (o.ordem || 0), dir: o.dir || -1 }, vazio: o.vazio, unidade: "registros" });
+    // mantém busca e ordenação quando a seção redesenha a mesma tabela (ex.: depois de um filtro)
+    if (el._st && el._cols !== colunas.length) el._st = null;
+    el._cols = colunas.length;
+    if (el._st) el._st.pg = 0;
+    ui.tabela(el, linhas, cols, { porPagina: o.porPagina, ordem: { k: "c" + (o.ordem || 0), dir: o.dir || -1 }, vazio: o.vazio, unidade: o.unidade || "registros", busca: o.busca, arquivo: o.arquivo, placeholder: o.placeholder });
   };
 
   /* ---------- filtros globais ---------- */
   P.filtros = { ano: "", mes: "", orgao: "", busca: "", forn: "" };
   P.anos = [];
-  P.setFiltro = (o) => { Object.assign(P.filtros, o); syncToolbar(); rerender(); };
+  P.setFiltro = (o) => { Object.assign(P.filtros, o); syncToolbar(); salvarUrl(); rerender(); };
+  // Filtros ficam no link (#/visao-geral?ano=2025&mes=3), para compartilhar ou voltar depois.
+  const CHAVES = ["ano", "mes", "orgao", "busca", "forn"];
+  function salvarUrl() {
+    if (!ativa) return;
+    const f = ativa.filtros === true ? CHAVES.slice(0, 4).concat("forn") : Array.isArray(ativa.filtros) ? ativa.filtros : [];
+    const q = new URLSearchParams();
+    for (const k of f) { const v = P.filtros[k]; if (v && !(k === "ano" && String(v) === String(P.anos[0]))) q.set(k, v); }
+    const h = "#/" + ativa.id + (q.toString() ? "?" + q : "");
+    if (location.hash !== h) history.replaceState(null, "", h);
+  }
+  function lerUrl() {
+    const m = location.hash.match(/\?(.*)$/);
+    if (!m) return;
+    const q = new URLSearchParams(m[1]);
+    for (const k of CHAVES) if (q.has(k)) P.filtros[k] = q.get(k);
+    if (P.filtros.ano && !P.anos.map(String).includes(String(P.filtros.ano))) P.filtros.ano = String(P.anos[0]);
+  }
 
   /* ---------- seções e navegação ---------- */
   const secoes = [];
@@ -277,7 +328,8 @@
   function rerender() { if (ativa && ativa.filtros) renderSecao(ativa); }
 
   function rota() {
-    const id = location.hash.replace(/^#\/?/, "");
+    lerUrl();
+    const id = location.hash.replace(/^#\/?/, "").replace(/\?.*$/, "");
     const s = secoes.find((x) => x.id === id || "secao-" + x.id === id) || secoes[0];
     if (!s) return;
     const view = document.getElementById("views");
@@ -296,6 +348,7 @@
     document.title = (s.id === secoes[0].id ? "" : s.titulo + " · ") + "Prefita · Gastos de Itaberá";
     toolbar(s);
     marcarNav();
+    salvarUrl();
     if (!s._feito || s.filtros) { s._feito = true; if (!s.filtros) s._el.innerHTML = ui.carregando(4); renderSecao(s); }
     if (P._rolou) window.scrollTo({ top: 0, behavior: "instant" });
     P._rolou = true;
@@ -345,6 +398,12 @@
     booted = true;
     montarNav();
     addEventListener("hashchange", rota);
+    // Atalho: "/" vai para a busca da página
+    addEventListener("keydown", (e) => {
+      if (e.key !== "/" || e.ctrlKey || e.metaKey || /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement?.tagName)) return;
+      const alvo = [...document.querySelectorAll("#toolbar input[type=search], .view:not([hidden]) input[type=search]")].find((i) => i.offsetParent);
+      if (alvo) { e.preventDefault(); alvo.focus(); alvo.select(); }
+    });
     rota();
   };
 })();
