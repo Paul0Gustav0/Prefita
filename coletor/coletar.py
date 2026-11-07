@@ -115,32 +115,40 @@ def valor(x) -> float:
         return 0.0
 
 
+EVENTOS = {"empenhado": "E", "reforço": "R", "reforco": "R", "anulação": "A", "anulacao": "A",
+           "valor liquidado": "L", "valor pago": "P"}
+
+
 def montar_empenhos() -> list[int]:
-    """Gera site/data/empenhos-{ano}.json com registros enxutos."""
+    """Gera site/data/empenhos-{ano}.json em formato enxuto.
+
+    {"f": [nomes de fornecedores], "i": [identificações], "r": [[orgao, mes, "dd/mm", nr, idx_forn, idx_id, valor, evento]]}
+    evento: E empenhado, R reforço, A anulação, L liquidado, P pago.
+    """
     anos = []
     for pasta in sorted((DADOS / "tce").glob("*")):
         if not pasta.is_dir():
             continue
         ano = int(pasta.name)
-        regs = []
+        nomes, ids, idx_n, idx_i, regs = [], [], {}, {}, []
         for arq in sorted(pasta.glob("*.json")):
             mes = int(arq.stem)
             for d in json.loads(arq.read_text(encoding="utf-8")):
-                data = str(d.get("dt_emissao_despesa") or "")
-                regs.append({
-                    "o": "C" if "CÂMARA" in str(d.get("orgao", "")).upper() or "CAMARA" in str(d.get("orgao", "")).upper() else "P",
-                    "m": mes,
-                    "d": data,
-                    "n": d.get("nr_empenho") or "",
-                    "i": d.get("id_fornecedor") or "",
-                    "f": (d.get("nm_fornecedor") or "Não informado").strip(),
-                    "v": round(valor(d.get("vl_despesa")), 2),
-                    "e": d.get("evento") or "Empenhado",
-                })
+                org = str(d.get("orgao", "")).upper()
+                nome = (d.get("nm_fornecedor") or "Não informado").strip()
+                ident = (d.get("id_fornecedor") or "").strip()
+                if nome not in idx_n:
+                    idx_n[nome] = len(nomes); nomes.append(nome)
+                if ident not in idx_i:
+                    idx_i[ident] = len(ids); ids.append(ident)
+                ev = EVENTOS.get(str(d.get("evento") or "").strip().lower(), "?")
+                regs.append(["C" if ("CÂMARA" in org or "CAMARA" in org) else "P", mes,
+                             str(d.get("dt_emissao_despesa") or "")[:5], d.get("nr_empenho") or "",
+                             idx_n[nome], idx_i[ident], round(valor(d.get("vl_despesa")), 2), ev])
         if regs:
-            salvar(SITE_DATA / f"empenhos-{ano}.json", regs)
+            salvar(SITE_DATA / f"empenhos-{ano}.json", {"f": nomes, "i": ids, "r": regs})
             anos.append(ano)
-            log(f"  painel: {ano} com {len(regs)} empenhos")
+            log(f"  painel: {ano} com {len(regs)} lançamentos")
     return anos
 
 

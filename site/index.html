@@ -163,7 +163,7 @@ body{margin:0}
     <div class="hd"><h2>Todos os empenhos</h2><span id="tblCount"></span></div>
     <div class="tablewrap"><table>
       <thead><tr>
-        <th data-k="dt">Data</th><th data-k="nr">Empenho</th><th data-k="forn">Fornecedor ou credor</th><th data-k="orgao">Órgão</th><th data-k="vl" class="r">Valor</th>
+        <th data-k="dt">Data</th><th data-k="nr">Empenho</th><th data-k="forn">Fornecedor ou credor</th><th data-k="orgao">Órgão</th><th data-k="liq" class="r">Empenhado</th><th data-k="pago" class="r">Pago</th>
       </tr></thead>
       <tbody id="tbody"></tbody>
     </table></div>
@@ -183,46 +183,53 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 // Limite de dispensa por valor para compras e serviços comuns (Lei 14.133, valor atualizado pelo Decreto 12.343/2024).
 const LIMITE_DISPENSA=62725.59;
-const SEM_DOC=/sem cpf|identifica[cç][aã]o especial|pessoal|folha|obriga[cç][oõ]es patronais|inss|previd/i;
+const SEM_DOC=/sem cpf|identifica[cç][aã]o especial|pessoal|folha|obriga[cç][oõ]es patronais|inss|i\.n\.s\.s|previd/i;
 
 const cache={};let DATA=[],CONTRATOS=[],RESUMO=null;
 const st={ano:"",mes:"",orgao:"",busca:"",forn:"",sort:"dt",dir:-1,page:0,ct:8};
 const PG=25;
 
-function parseData(t){const m=String(t||"").match(/^(\d{2})\/(\d{2})\/(\d{4})/);return m?new Date(+m[3],+m[2]-1,+m[1]):null}
+// Cada lançamento do TCE é um evento: E empenhado, R reforço, A anulação, L liquidado, P pago.
+// vl = efeito no valor empenhado (E e R somam, A subtrai); pg = valor pago.
 async function carregarAno(ano){
   if(!cache[ano]){const r=await fetch(`data/empenhos-${ano}.json`);if(!r.ok)throw new Error("HTTP "+r.status);
-    cache[ano]=(await r.json()).map(d=>({orgao:d.o,ano:+ano,mes:d.m,dt:parseData(d.d),nr:d.n,idf:d.i,forn:d.f,vl:d.v,evento:d.e}))}
+    const j=await r.json();const agg=new Map();
+    const ev=j.r.map(x=>{const [o,m,dm,nr,fi,ii,v,e]=x;const [dd,mm]=String(dm).split("/");
+      const d={orgao:o,ano:+ano,mes:m,dt:dd&&mm?new Date(+ano,+mm-1,+dd):null,nr,forn:j.f[fi],idf:j.i[ii],ev:e,
+        vl:e==="E"||e==="R"?v:e==="A"?-v:0,pg:e==="P"?v:0};
+      const k=o+"|"+nr;const a=agg.get(k)||agg.set(k,{liq:0,pg:0}).get(k);a.liq+=d.vl;a.pg+=d.pg;return d});
+    for(const d of ev)if(d.ev==="E"){const a=agg.get(d.orgao+"|"+d.nr);d.liq=a.liq;d.pago=a.pg}
+    cache[ano]=ev}
   return cache[ano];
 }
 
-function isEmpenho(d){return !/anula|estorno/i.test(d.evento)}
 function filtrado(ignoreMes){
   const b=st.busca.trim().toLowerCase();
-  return DATA.filter(d=>isEmpenho(d)&&(ignoreMes||!st.mes||d.mes==st.mes)&&(!st.orgao||d.orgao===st.orgao)&&(!st.forn||d.forn===st.forn)&&(!b||d.forn.toLowerCase().includes(b)||d.nr.toLowerCase().includes(b)));
+  return DATA.filter(d=>(ignoreMes||!st.mes||d.mes==st.mes)&&(!st.orgao||d.orgao===st.orgao)&&(!st.forn||d.forn===st.forn)&&(!b||d.forn.toLowerCase().includes(b)||d.nr.toLowerCase().includes(b)));
 }
 const sum=a=>a.reduce((s,d)=>s+d.vl,0);
+const sumPg=a=>a.reduce((s,d)=>s+d.pg,0);
 function groupSum(a,k){const m=new Map();for(const d of a){const key=d[k]||"Não informado";m.set(key,(m.get(key)||0)+d.vl)}return [...m.entries()].sort((x,y)=>y[1]-x[1])}
 
 function render(){
   const rows=filtrado(false), rowsAno=filtrado(true);
-  const total=sum(rows);const nForn=new Set(rows.map(d=>d.forn)).size;
-  const top=groupSum(rows,"forn");
+  const total=sum(rows),pago=sumPg(rows);const emps=rows.filter(d=>d.ev==="E");const nForn=new Set(emps.map(d=>d.forn)).size;
+  const top=groupSum(rows,"forn").filter(([,v])=>v>0);
   const semFolha=top.filter(([f])=>!SEM_DOC.test(f));
   const periodo=(st.mes?MESES[st.mes-1]+" de ":"")+st.ano;
   $("kpis").innerHTML=[
-    ["Total empenhado",compact(total),periodo],
-    ["Empenhos",NUM.format(rows.length),rows.length?"média de "+BRL0.format(total/rows.length)+" cada":"nenhum no período"],
-    ["Fornecedores e credores",NUM.format(nForn),"pessoas, empresas e folhas diferentes"],
+    ["Empenhado",compact(total),periodo+", já descontadas as anulações"],
+    ["Pago",compact(pago),"pagamentos feitos no período, inclusive de empenhos de anos anteriores"],
+    ["Empenhos",NUM.format(emps.length),NUM.format(nForn)+" fornecedores e credores diferentes"],
     ["Maior fornecedor",semFolha[0]?compact(semFolha[0][1]):"–",semFolha[0]?esc(semFolha[0][0]):"sem dados"],
   ].map(k=>`<div class="kpi"><div class="eyebrow">${k[0]}</div><div class="v">${k[1]}</div><div class="s">${k[2]}</div></div>`).join("");
   $("activeChip").innerHTML=st.forn?`<button class="chip" id="clearForn" type="button" aria-label="Remover filtro de fornecedor">${esc(st.forn)} ✕</button>`:"";
   if(st.forn)$("clearForn").onclick=()=>{st.forn="";st.page=0;render()};
   chartMes(rowsAno);
   hbars($("topForn"),top.slice(0,10),total,k=>{st.forn=k;st.page=0;render();$("tbody").closest("section").scrollIntoView({behavior:"smooth",block:"start"})});
-  alerts(rows,total);
+  alerts(emps,total);
   contratos();
-  table(rows);
+  table(emps);
 }
 function hbars(el,items,total,onClick){
   if(!items.length){el.innerHTML=`<div class="empty">Nenhum empenho com esses filtros.</div>`;return}
@@ -232,19 +239,19 @@ function hbars(el,items,total,onClick){
 }
 function chartMes(rowsAno){
   const el=$("chartMes");const W=Math.max(320,el.clientWidth||560),H=240,P={l:58,r:8,t:12,b:28};
-  const by=new Array(12).fill(0);for(const d of rowsAno)if(d.mes)by[d.mes-1]+=d.vl;
-  const max=Math.max(...by,1);
+  const by=new Array(12).fill(0),pgm=new Array(12).fill(0);for(const d of rowsAno)if(d.mes){by[d.mes-1]+=d.vl;pgm[d.mes-1]+=d.pg}
+  const max=Math.max(...by.map(v=>Math.max(v,0)),1);
   const step=Math.pow(10,Math.floor(Math.log10(max)));const nice=[1,2,2.5,5,10].map(x=>x*step).find(x=>max/x<=5)||step*10;const top=Math.ceil(max/nice)*nice;
   const iw=W-P.l-P.r,ih=H-P.t-P.b,bw=iw/12,y=v=>P.t+ih-(v/top)*ih;
   let g="";for(let v=0;v<=top+1e-9;v+=nice)g+=`<line class="gl" x1="${P.l}" x2="${W-P.r}" y1="${y(v)}" y2="${y(v)}"/><text x="${P.l-8}" y="${y(v)+4}" text-anchor="end">${compact(v).replace("R$ ","")}</text>`;
   let b="";for(let i=0;i<12;i++){const v=by[i]||0,x=P.l+i*bw+bw*0.18,w=bw*0.64,sel=st.mes==i+1,hgt=Math.max(0,P.t+ih-y(v));
     const r=Math.min(4,w/2,hgt);
-    b+=`<g class="bm" data-i="${i}"><rect x="${P.l+i*bw}" y="${P.t}" width="${bw}" height="${ih}" fill="transparent" style="cursor:pointer"/>${v?`<path d="M${x},${P.t+ih} V${y(v)+r} q0,-${r} ${r},-${r} H${x+w-r} q${r},0 ${r},${r} V${P.t+ih} Z" fill="${sel||!st.mes?"var(--bar)":"var(--bar-soft)"}"/>`:""}<text x="${x+w/2}" y="${H-8}" text-anchor="middle">${MES_ABBR[i]}</text></g>`}
+    b+=`<g class="bm" data-i="${i}"><rect x="${P.l+i*bw}" y="${P.t}" width="${bw}" height="${ih}" fill="transparent" style="cursor:pointer"/>${v>0?`<path d="M${x},${P.t+ih} V${y(v)+r} q0,-${r} ${r},-${r} H${x+w-r} q${r},0 ${r},${r} V${P.t+ih} Z" fill="${sel||!st.mes?"var(--bar)":"var(--bar-soft)"}"/>`:""}<text x="${x+w/2}" y="${H-8}" text-anchor="middle">${MES_ABBR[i]}</text></g>`}
   el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" role="img" aria-label="Gasto empenhado por mês em ${st.ano}">${g}${b}<line x1="${P.l}" x2="${W-P.r}" y1="${P.t+ih}" y2="${P.t+ih}" stroke="var(--ink-3)"/></svg><div class="tip" hidden></div>`;
   $("mesNote").textContent=st.mes?"Toque no mês de novo para ver o ano todo":"Toque num mês para filtrar";
   const tip=el.querySelector(".tip");
   el.querySelectorAll(".bm").forEach(n=>{const i=+n.dataset.i;
-    n.addEventListener("mousemove",e=>{const rc=el.getBoundingClientRect();tip.hidden=false;tip.style.left=(e.clientX-rc.left)+"px";tip.style.top=(e.clientY-rc.top)+"px";tip.innerHTML=`<b>${MESES[i]} ${st.ano}</b><br>${by[i]?BRL.format(by[i]):"Ainda sem dados do TCE"}`});
+    n.addEventListener("mousemove",e=>{const rc=el.getBoundingClientRect();tip.hidden=false;tip.style.left=(e.clientX-rc.left)+"px";tip.style.top=(e.clientY-rc.top)+"px";tip.innerHTML=`<b>${MESES[i]} ${st.ano}</b><br>${by[i]||pgm[i]?`Empenhado: ${BRL.format(by[i])}<br>Pago: ${BRL.format(pgm[i])}`:"Ainda sem dados do TCE"}`});
     n.addEventListener("mouseleave",()=>tip.hidden=true);
     n.addEventListener("click",()=>{st.mes=st.mes==i+1?"":String(i+1);$("fMes").value=st.mes;st.page=0;render()});
   });
@@ -259,7 +266,7 @@ function alerts(rows,total){
   const byF=new Map();for(const d of rows){(byF.get(d.forn)||byF.set(d.forn,[]).get(d.forn)).push(d.vl)}
   const outl=new Map();
   for(const d of rows){const l=byF.get(d.forn);if(l.length<5||fora(d))continue;const med=[...l].sort((a,b)=>a-b)[Math.floor(l.length/2)];if(d.vl>med*3&&d.vl>20000&&!(outl.get(d.forn)?.d.vl>=d.vl))outl.set(d.forn,{d,med})}
-  for(const {d,med} of outl.values())out.push({lvl:"crit",tag:"Fora do padrão",forn:d.forn,txt:`Empenho <b>${esc(d.nr)}</b> para <b>${esc(d.forn)}</b> de ${BRL0.format(d.vl)}, mais de 3 vezes o valor típico desse fornecedor (${BRL0.format(med)}).`,why:"Pode ser uma compra maior legítima. Confira o histórico do empenho no portal da Prefeitura.",score:d.vl})
+  for(const {d,med} of outl.values())out.push({lvl:"warn",tag:"Fora do padrão",forn:d.forn,txt:`Empenho <b>${esc(d.nr)}</b> para <b>${esc(d.forn)}</b> de ${BRL0.format(d.vl)}, mais de 3 vezes o valor típico desse fornecedor (${BRL0.format(med)}).`,why:"Pode ser uma compra maior legítima. Confira o histórico do empenho no portal da Prefeitura.",score:d.vl})
   out.sort((a,b)=>(a.lvl==="crit"?-1:1)-(b.lvl==="crit"?-1:1)||b.score-a.score);
   const el=$("alerts");
   if(!out.length){el.innerHTML=`<div class="empty">Nenhum sinal automático com esses filtros.</div>`;return}
@@ -282,8 +289,8 @@ function table(rows){
   const s=[...rows].sort((a,b)=>{const x=a[k],y=b[k];return (x>y?1:x<y?-1:0)*dir});
   const pages=Math.max(1,Math.ceil(s.length/PG));st.page=Math.min(st.page,pages-1);
   const pg=s.slice(st.page*PG,(st.page+1)*PG);
-  $("tbody").innerHTML=pg.length?pg.map(d=>`<tr><td class="num">${d.dt?d.dt.toLocaleDateString("pt-BR"):"–"}</td><td class="mono">${esc(d.nr)}</td><td>${esc(d.forn)}</td><td>${d.orgao==="C"?"Câmara":"Prefeitura"}</td><td class="r num">${BRL.format(d.vl)}</td></tr>`).join(""):`<tr><td colspan="5" class="empty">Nenhum empenho com esses filtros.</td></tr>`;
-  $("tblCount").textContent=NUM.format(s.length)+" empenhos · "+BRL.format(sum(s));
+  $("tbody").innerHTML=pg.length?pg.map(d=>`<tr><td class="num">${d.dt?d.dt.toLocaleDateString("pt-BR"):"–"}</td><td class="mono">${esc(d.nr)}</td><td>${esc(d.forn)}</td><td>${d.orgao==="C"?"Câmara":"Prefeitura"}</td><td class="r num">${BRL.format(d.liq)}</td><td class="r num">${d.pago>=d.liq-0.01&&d.liq>0?`<span class="pill">${BRL.format(d.pago)}</span>`:BRL.format(d.pago)}</td></tr>`).join(""):`<tr><td colspan="6" class="empty">Nenhum empenho com esses filtros.</td></tr>`;
+  $("tblCount").textContent=NUM.format(s.length)+" empenhos emitidos no período";
   $("pgInfo").textContent=`Página ${st.page+1} de ${pages}`;
   $("pgPrev").disabled=st.page===0;$("pgNext").disabled=st.page>=pages-1;
   document.querySelectorAll("th[data-k]").forEach(th=>{const base=th.textContent.replace(/ [▲▼]$/,"");th.textContent=base+(th.dataset.k===k?(dir>0?" ▲":" ▼"):"")});
@@ -291,7 +298,7 @@ function table(rows){
 
 async function trocarAno(ano){
   st.ano=String(ano);st.mes="";st.page=0;st.ct=8;$("fMes").value="";
-  $("tbody").innerHTML=`<tr><td colspan="5" class="empty">Carregando ${ano}…</td></tr>`;
+  $("tbody").innerHTML=`<tr><td colspan="6" class="empty">Carregando ${ano}…</td></tr>`;
   try{DATA=await carregarAno(ano)}catch(e){DATA=[]}
   render();
 }
@@ -311,7 +318,7 @@ async function init(){
   $("fMes").onchange=e=>{st.mes=e.target.value;st.page=0;render()};
   $("fOrgao").onchange=e=>{st.orgao=e.target.value;st.page=0;render()};
   $("fBusca").oninput=e=>{st.busca=e.target.value;st.page=0;render()};
-  document.querySelectorAll("th[data-k]").forEach(th=>th.onclick=()=>{const k=th.dataset.k;st.dir=st.sort===k?-st.dir:(k==="vl"||k==="dt"?-1:1);st.sort=k;render()});
+  document.querySelectorAll("th[data-k]").forEach(th=>th.onclick=()=>{const k=th.dataset.k;st.dir=st.sort===k?-st.dir:(k==="liq"||k==="pago"||k==="dt"?-1:1);st.sort=k;render()});
   $("pgPrev").onclick=()=>{st.page--;render()};$("pgNext").onclick=()=>{st.page++;render()};
   $("ctMore").onclick=()=>{st.ct+=10;contratos()};
   let rt;addEventListener("resize",()=>{clearTimeout(rt);rt=setTimeout(()=>chartMes(filtrado(true)),150)});
