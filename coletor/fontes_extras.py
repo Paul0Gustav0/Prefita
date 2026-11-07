@@ -156,7 +156,11 @@ def coletar_folha() -> dict:
     """site/data/folha-AAAA-MM.json (um por mês) e site/data/folha-meses.json (meses disponíveis).
 
     {"sec": [...], "vinc": [...], "cargo": [...], "local": [...],
-     "r": [[nome, cargo, sec, local, vinc, admissao, bruto, descontos, liquido, rescisao(0/1)]]}
+     "r": [[nome, cargo, sec, local, vinc, admissao, bruto, descontos, liquido, rescisao(0/1),
+            salario_base_do_cargo, horas_extras, horas_semanais, ref_salarial, regime, situacao, fim_contrato,
+            desligamento, folha (mensal, 13º, rescisão…), forma_provimento]]}
+    O portal só publica o total de proventos e de descontos; não há verbas item a item nos dados abertos.
+    "v": 2 marca os arquivos que já têm as colunas extras (os antigos são baixados de novo uma vez).
     """
     idx_arq = SITE_DATA / "folha-meses.json"
     meses = set(json.loads(idx_arq.read_text(encoding="utf-8"))) if idx_arq.exists() else set()
@@ -165,10 +169,16 @@ def coletar_folha() -> dict:
     while (a, m) <= (hoje.year, hoje.month):
         chave = f"{a}-{m:02d}"
         recente = (hoje.year * 12 + hoje.month) - (a * 12 + m) < 3
-        if chave not in meses or recente:
+        arq = SITE_DATA / f"folha-{chave}.json"
+        try:
+            antigo = arq.exists() and json.loads(arq.read_text(encoding="utf-8")).get("v") != 2
+        except ValueError:
+            antigo = True
+        if chave not in meses or recente or antigo:
             dados = fiorilli("Pessoal", a, Listagem="Servidores", Ano=a, MesFinalPeriodo=f"{m:02d}")
             if dados:
                 sec, vinc, cargo, local = Tabela(), Tabela(), Tabela(), Tabela()
+                ref, regime, situ, folha, prov = Tabela(), Tabela(), Tabela(), Tabela(), Tabela()
                 regs = []
                 for d in dados:
                     bruto, desc = round(valor(d.get("PROVENTOS")), 2), round(valor(d.get("DESCONTOS")), 2)
@@ -179,10 +189,16 @@ def coletar_folha() -> dict:
                         local(d.get("LOCALDETRABALHO") or d.get("UNIDADE")), vinc(d.get("VINCULO")),
                         data_br(d.get("DATAADMISSAO")), bruto, desc, round(bruto - desc, 2),
                         1 if "resc" in str(d.get("REFERENCIA_NOME") or "").lower() else 0,
+                        round(valor(d.get("VALORINICIALCARGO")), 2), round(valor(d.get("VALOR_HE")), 2),
+                        int(valor(d.get("HORASEMANAL"))), ref(d.get("NOMEREFSALATUAL")), regime(d.get("TIPOREGIME")),
+                        situ(d.get("SITUACAOFUNCIONAL") or d.get("NATUREZA")), data_br(d.get("DTTERMINO")),
+                        data_br(d.get("DATADESLIGAMENTO")), folha(d.get("REFERENCIA_NOME")), prov(d.get("FORMAPROVIMENTO")),
                     ])
                 regs.sort(key=lambda r: -r[6])
                 salvar(SITE_DATA / f"folha-{chave}.json", {"sec": sec.itens, "vinc": vinc.itens,
-                                                         "cargo": cargo.itens, "local": local.itens, "r": regs})
+                                                         "cargo": cargo.itens, "local": local.itens, "ref": ref.itens,
+                                                         "regime": regime.itens, "situ": situ.itens, "folha": folha.itens,
+                                                         "prov": prov.itens, "r": regs, "v": 2})
                 meses.add(chave)
                 novos += 1
                 log(f"  Fiorilli folha {chave}: {len(regs)} pessoas")
