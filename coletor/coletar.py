@@ -241,6 +241,9 @@ def main() -> int:
     log("== Montando dados do painel")
     anos = montar_empenhos()
     n_contratos = montar_contratos()
+    import socios
+    log("== sócios dos fornecedores")
+    extras["socios"] = tentar("socios", lambda: socios.coletar_socios(fx.CPFS_FOLHA))
     resumo = {
         "atualizado_em": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
         "anos": anos,

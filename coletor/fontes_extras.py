@@ -148,6 +148,10 @@ def detectar_pagamentos(ano: int, regs: list, fornecedores: list, secretarias: l
 
 # ---------------------------------------------------------------- folha de pagamento
 
+# Nome -> CPFs mascarados (123.XXX.XXX-45) dos meses baixados nesta execução. Fica só na memória,
+# para o cruzamento com sócios (socios.py), e nunca é gravado em arquivo.
+CPFS_FOLHA: dict[str, set[str]] = {}
+
 def coletar_folha() -> dict:
     """site/data/folha-AAAA-MM.json (um por mês) e site/data/folha-meses.json (meses disponíveis).
 
@@ -168,6 +172,8 @@ def coletar_folha() -> dict:
                 regs = []
                 for d in dados:
                     bruto, desc = round(valor(d.get("PROVENTOS")), 2), round(valor(d.get("DESCONTOS")), 2)
+                    if d.get("CPFFORMATADO"):
+                        CPFS_FOLHA.setdefault(texto(d.get("NOME_SOCIAL") or d.get("NOME")), set()).add(texto(d.get("CPFFORMATADO")))
                     regs.append([
                         texto(d.get("NOME_SOCIAL") or d.get("NOME")), cargo(d.get("CARGO")), sec(d.get("DIVISAO")),
                         local(d.get("LOCALDETRABALHO") or d.get("UNIDADE")), vinc(d.get("VINCULO")),

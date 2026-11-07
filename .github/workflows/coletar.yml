@@ -31,7 +31,20 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Coletar TCE-SP e PNCP
+      - name: Instalar dependências (criptografia da área reservada)
+        run: pip install cryptography==44.0.0
+
+      # Cadastros da Receita (QSA) consultados nos dias anteriores. Ficam no cache do Actions,
+      # fora do repositório público, para não refazer ~1.500 consultas todo dia.
+      - uses: actions/cache@v4
+        with:
+          path: .cache/cnpj
+          key: cnpj-${{ github.run_id }}
+          restore-keys: cnpj-
+
+      - name: Coletar dados
+        env:
+          PREFITA_SENHA: ${{ secrets.PREFITA_SENHA }}
         run: python coletor/coletar.py
 
       - name: Salvar dados no repositório
