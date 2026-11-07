@@ -1,14 +1,22 @@
-name: Sondar fontes de dados (temporário)
+name: Testar coleta na branch (temporário)
 on:
   push:
     branches: ["claude/**"]
-    paths: ["sondagem/**", ".github/workflows/sondar.yml"]
+    paths: ["coletor/**", ".github/workflows/sondar.yml"]
+permissions:
+  contents: write
 jobs:
-  sondar:
+  coletar:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: {python-version: "3.12"}
-      - run: python sondagem/sondar.py
+      - run: python coletor/coletar.py
+      - run: |
+          git config user.name "prefita-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dados site/data
+          git commit -m "Dados de teste da coleta em $(date -u +%Y-%m-%d)" || echo "nada novo"
+          git push

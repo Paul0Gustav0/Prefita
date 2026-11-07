@@ -10,6 +10,8 @@ Roda todo dia no GitHub Actions. Fontes:
 Os dados brutos ficam em dados/ (versionados, servem de histórico).
 O painel lê os arquivos já tratados em site/data/.
 
+  3. Portal de transparência da Prefeitura (Fiorilli), SICONFI e Transferegov: ver fontes_extras.py.
+
 Só usa a biblioteca padrão do Python.
 """
 from __future__ import annotations
@@ -44,12 +46,12 @@ def log(msg: str) -> None:
     print(msg, flush=True)
 
 
-def get_json(url: str, tentativas: int = 5):
+def get_json(url: str, tentativas: int = 5, timeout: int = 120):
     """GET com novas tentativas. Devolve (status, json|None)."""
     for i in range(tentativas):
         try:
             req = urllib.request.Request(url, headers=UA)
-            with urllib.request.urlopen(req, timeout=120) as r:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
                 corpo = r.read().decode("utf-8")
                 if r.status == 204 or not corpo.strip():
                     return r.status, None
@@ -229,6 +231,13 @@ def main() -> int:
     tce = tentar("TCE-SP", coletar_tce)
     log("== PNCP")
     pncp = tentar("PNCP", coletar_pncp)
+    import fontes_extras as fx  # import tardio: o módulo usa as funções daqui
+    extras = {}
+    for nome, fn in [("despesas", fx.coletar_despesas), ("folha", fx.coletar_folha), ("diarias", fx.coletar_diarias),
+                     ("licitacoes_contratos", fx.coletar_licitacoes_contratos), ("receitas", fx.coletar_receitas),
+                     ("emendas", fx.coletar_emendas), ("lrf", fx.coletar_lrf)]:
+        log(f"== {nome}")
+        extras[nome] = tentar(nome, fn)
     log("== Montando dados do painel")
     anos = montar_empenhos()
     n_contratos = montar_contratos()
@@ -236,7 +245,8 @@ def main() -> int:
         "atualizado_em": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
         "anos": anos,
         "contratos": n_contratos,
-        "fontes": {"tce": tce, "pncp": pncp},
+        "anos_portal": sorted({int(p.stem.split("-")[1]) for p in SITE_DATA.glob("despesas-*.json")}),
+        "fontes": {"tce": tce, "pncp": pncp, **extras},
     }
     salvar(SITE_DATA / "resumo.json", resumo)
     log(json.dumps(resumo, ensure_ascii=False, indent=2))
