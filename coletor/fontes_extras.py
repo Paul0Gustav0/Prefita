@@ -129,8 +129,9 @@ def detectar_pagamentos(ano: int, regs: list, fornecedores: list, secretarias: l
     salvar(snap, agora)
     arq = SITE_DATA / "pagamentos-recentes.json"
     hist = json.loads(arq.read_text(encoding="utf-8")) if arq.exists() else []
-    if antes is None:
-        return  # primeira coleta do ano: ainda não há com o que comparar
+    if antes is None:  # primeira coleta do ano: ainda não há com o que comparar
+        salvar(arq, hist)
+        return
     dia = hoje.isoformat()
     hist = [h for h in hist if not (h["dia"] == dia and h["ano"] == ano)]  # rodar duas vezes no dia não duplica
     por_pk = {r[0]: r for r in regs}
