@@ -1,0 +1,63 @@
+name: Coletar dados e publicar painel
+
+on:
+  schedule:
+    - cron: "15 9 * * *"   # todo dia às 06:15 (horário de Brasília)
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - "coletor/**"
+      - ".github/workflows/coletar.yml"
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: coletar
+  cancel-in-progress: false
+
+jobs:
+  coletar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Coletar TCE-SP e PNCP
+        run: python coletor/coletar.py
+
+      - name: Salvar dados no repositório
+        run: |
+          git config user.name "prefita-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dados site/data
+          if git diff --cached --quiet; then
+            echo "Nada novo hoje."
+          else
+            git commit -m "Dados atualizados em $(date -u +%Y-%m-%d)"
+            git push
+          fi
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  publicar:
+    needs: coletar
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4
