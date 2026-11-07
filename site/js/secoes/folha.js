@@ -54,7 +54,7 @@
           <section class="panel" data-lrf-box hidden><div class="hd"><h2>Limite da Lei de Responsabilidade Fiscal</h2><span data-lrf-per></span></div><div data-lrf></div></section>
           <section class="panel"><div class="hd"><h2>Cargos com mais gente</h2><span>Toque num cargo para filtrar</span></div><div class="hbars" data-cargo></div></section>
         </div>
-        <section class="panel" style="margin-top:22px"><div class="hd"><h2>Servidores</h2><span class="filters-mini" data-ordem></span></div><div data-tabela></div></section>`;
+        <section class="panel" style="margin-top:22px"><div class="hd"><h2>Servidores <small class="muted" style="font-weight:400;font-size:13px">· toque num nome para ver salário, descontos e o histórico</small></h2><span class="filters-mini" data-ordem></span></div><div data-tabela></div></section>`;
       const q = s => el.querySelector(s);
 
       if (lrf && lrf.pct != null) {
@@ -105,7 +105,7 @@
           { t: "Bruto", k: "bruto", r: true, f: v => fmt.brl(v) },
           { t: "Descontos", k: "desc", r: true, f: v => fmt.brl(v) },
           { t: "Líquido", k: "liq", r: true, f: v => fmt.brl(v) },
-        ], f, { ordem: oc, dir: od, forcar: true, buscaInicial: buscaIni, busca: true, placeholder: "Buscar servidor pelo nome, cargo, secretaria ou local", unidade: "servidores", arquivo: "folha-" + st.mes });
+        ], f, { ordem: oc, dir: od, forcar: true, buscaInicial: buscaIni, busca: true, placeholder: "Buscar servidor pelo nome, cargo, secretaria ou local", unidade: "servidores", arquivo: "folha-" + st.mes, aoClicar: l => P.detalhe("servidor", { nome: l.nome, mes: st.mes }) });
       }
 
       q("[data-f=mes]").onchange = e => { st.mes = e.target.value; desenhar(); };

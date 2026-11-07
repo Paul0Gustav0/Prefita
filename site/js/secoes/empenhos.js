@@ -30,7 +30,7 @@
           { label: "Quitados", value: num(quitados), note: emps.length ? `${P.fmt.pctF(quitados / emps.length, 0)} dos empenhos foram pagos por inteiro` : "–" },
         ])}
         <div data-fbox></div>
-        <section class="card"><div class="card-hd"><div><h2>Notas de empenho</h2><div class="sub">${f.forn ? `Só de ${esc(f.forn)}` : "Prefeitura e Câmara"}</div></div></div><div class="card-bd" id="tbl"></div></section>`;
+        <section class="card"><div class="card-hd"><div><h2>Notas de empenho</h2><div class="sub">${f.forn ? `Só de ${esc(f.forn)}` : "Prefeitura e Câmara"} · toque numa linha para ver os detalhes</div></div></div><div class="card-bd" id="tbl"></div></section>`;
       el.querySelector("[data-fbox]").replaceWith(fbox);
       const chave = JSON.stringify(f) + JSON.stringify(fst);
       P.ui.tabela(el.querySelector("#tbl"), emps, [
@@ -40,7 +40,7 @@
         { k: "orgao", t: "Órgão", html: (d) => (d.orgao === "C" ? "Câmara" : "Prefeitura") },
         { k: "liq", t: "Empenhado", r: true, html: (d) => brl(d.liq) },
         { k: "pago", t: "Pago", r: true, html: (d) => (d.liq > 0 && d.pago >= d.liq - 0.01 ? `<span class="badge good">${brl(d.pago)}</span>` : brl(d.pago)) },
-      ], { ordem: { k: "dt", dir: -1 }, unidade: "empenhos", vazio: "Nenhum empenho com esses filtros.", resetar: chave !== ultimaChave });
+      ], { ordem: { k: "dt", dir: -1 }, unidade: "empenhos", vazio: "Nenhum empenho com esses filtros.", resetar: chave !== ultimaChave, aoClicar: (d) => P.detalhe("empenhoTce", { orgao: d.orgao, ano: d.ano, nr: d.nr }) });
       ultimaChave = chave;
     },
   });

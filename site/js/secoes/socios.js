@@ -61,7 +61,7 @@
               return `<span class="badge ${def.cls}" title="${fmt.esc(def.txt(s) + (outros ? " " + outros : ""))}">${fmt.esc(def.r)}</span>`;
             }).join(" ") + (e.sinais.some((s) => s.com) ? `<br><small class="muted">${fmt.esc(e.sinais.filter((s) => s.com).flatMap((s) => s.com).filter((c, i, a) => a.indexOf(c) === i).slice(0, 3).map((c) => porCnpj.get(c)?.nome || cnpjFmt(c)).join("; "))}</small>` : "") },
           { t: "Empenhado", k: "valor", r: true, f: (v) => fmt.brl(v) },
-        ], f, { ordem: 4 });
+        ], f, { ordem: 4, aoClicar: (e) => P.detalhe("fornecedor", { nome: e.nome, doc: e.cnpj }) });
       }
       q("[data-f=sinal]").onchange = (e) => { st.sinal = e.target.value; desenhar(); };
       q("[data-f=busca]").value = st.busca;

@@ -235,7 +235,8 @@ def main() -> int:
     extras = {}
     for nome, fn in [("despesas", fx.coletar_despesas), ("folha", fx.coletar_folha), ("diarias", fx.coletar_diarias),
                      ("licitacoes_contratos", fx.coletar_licitacoes_contratos), ("receitas", fx.coletar_receitas),
-                     ("emendas", fx.coletar_emendas), ("lrf", fx.coletar_lrf)]:
+                     ("emendas", fx.coletar_emendas), ("lrf", fx.coletar_lrf),
+                     ("detalhe_empenhos", fx.coletar_detalhes_empenhos)]:
         log(f"== {nome}")
         extras[nome] = tentar(nome, fn)
     log("== Montando dados do painel")

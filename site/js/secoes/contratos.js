@@ -50,7 +50,7 @@
             <div class="card-bd"><div id="ctCats"></div></div>
           </section>
           <section class="card span-8">
-            <div class="card-hd"><div><h2>Lista de contratos</h2><div class="sub">${num(lista.length)} contratos</div></div>
+            <div class="card-hd"><div><h2>Lista de contratos</h2><div class="sub">${num(lista.length)} contratos · toque para ver a ficha</div></div>
               <div class="seg" role="group" aria-label="Ordenar">${[["recentes", "Recentes"], ["valor", "Maior valor"], ["vencendo", "Vencendo"]].map(([k, t]) => `<button type="button" data-o="${k}" aria-pressed="${ordem === k}">${t}</button>`).join("")}</div></div>
             <div class="card-bd"><div class="list" id="ctLista"></div></div>
             ${lista.length > mostrar ? `<div class="card-ft"><span>Mostrando ${mostrar} de ${num(lista.length)}</span><button class="btn sm" id="ctMais" type="button">Mostrar mais</button></div>` : ""}
@@ -59,11 +59,15 @@
 
       P.ui.hbars(el.querySelector("#ctCats"), [...cats.entries()].sort((a, b) => b[1] - a[1]).map(([k, v]) => ({ k, v })), { total: doAno.reduce((s, c) => s + (+c.valor || 0), 0), onClick: (k) => { fst.cat = fst.cat === k ? "" : k; mostrar = 12; P.setFiltro({}); } });
       el.querySelector("[data-fbox]").replaceWith(fbox);
-      el.querySelector("#ctLista").innerHTML = lista.length ? lista.slice(0, mostrar).map((c) => {
+      el.querySelector("#ctLista").innerHTML = lista.length ? lista.slice(0, mostrar).map((c, i) => {
         const vence = c.fim && c.fim >= hoje && c.fim <= em60, encerrado = c.fim && c.fim < hoje;
         const link = c.ano && c.seq ? `https://pncp.gov.br/app/contratos/46634374000160/${c.ano}/${c.seq}` : "";
-        return `<div class="row"><span class="t" title="${esc(c.forn)}">${esc(c.forn)}</span><span class="v">${brl(+c.valor || 0)}</span><span class="d">${esc(c.objeto || "")}</span><span class="m">${vence ? `<span class="badge warn">${P.ico("clock")}Vence em ${data(c.fim)}</span>` : encerrado ? `<span class="badge">Encerrado</span>` : c.fim ? `<span class="badge good">Vigente até ${data(c.fim)}</span>` : ""}${c.categoria ? `<span class="badge">${esc(c.categoria)}</span>` : ""}<span>Contrato ${esc(c.num || "–")} · assinado em ${data(c.assinatura)}</span>${link ? `<a href="${link}" target="_blank" rel="noopener">Ver no PNCP ${P.ico("ext")}</a>` : ""}</span></div>`;
+        return `<div class="row clicavel" data-i="${i}" tabindex="0" role="button" title="Ver detalhes do contrato"><span class="t" title="${esc(c.forn)}">${esc(c.forn)}</span><span class="v">${brl(+c.valor || 0)}</span><span class="d">${esc(c.objeto || "")}</span><span class="m">${vence ? `<span class="badge warn">${P.ico("clock")}Vence em ${data(c.fim)}</span>` : encerrado ? `<span class="badge">Encerrado</span>` : c.fim ? `<span class="badge good">Vigente até ${data(c.fim)}</span>` : ""}${c.categoria ? `<span class="badge">${esc(c.categoria)}</span>` : ""}<span>Contrato ${esc(c.num || "–")} · assinado em ${data(c.assinatura)}</span>${link ? `<a href="${link}" target="_blank" rel="noopener">Ver no PNCP ${P.ico("ext")}</a>` : ""}</span></div>`;
       }).join("") : P.ui.vazio("Nenhum contrato com esses filtros.");
+      el.querySelectorAll("#ctLista [data-i]").forEach((r) => {
+        r.onclick = (e) => { if (!e.target.closest("a")) P.detalhe("contratoPncp", { c: lista[+r.dataset.i] }); };
+        r.onkeydown = (e) => { if (e.key === "Enter") r.click(); };
+      });
       el.querySelectorAll("[data-o]").forEach((b) => (b.onclick = () => { ordem = b.dataset.o; mostrar = 12; P.setFiltro({}); }));
       const m = el.querySelector("#ctMais"); if (m) m.onclick = () => { mostrar += 20; P.setFiltro({}); };
     },
