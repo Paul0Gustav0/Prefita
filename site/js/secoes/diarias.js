@@ -18,7 +18,7 @@
         </div>
         <div data-kpis style="margin-top:18px"></div>
         <div class="grid" style="margin-top:22px">
-          <section class="panel"><div class="hd"><h2>Quem mais recebeu</h2><span>Toque para filtrar</span></div><div class="hbars" data-fav></div></section>
+          <section class="panel"><div class="hd"><h2>Quem mais recebeu</h2><span>Toque para ver a ficha da pessoa</span></div><div class="hbars" data-fav></div></section>
           <section class="panel"><div class="hd"><h2>Por tipo de despesa</h2><span>Toque para filtrar</span></div><div class="hbars" data-tipo></div></section>
         </div>
         <section class="panel" style="margin-top:22px"><div class="hd"><h2>Lançamentos</h2><span>Mais recentes primeiro</span></div><div data-tabela></div></section>`;
@@ -40,7 +40,7 @@
           ["Favorecidos", fmt.num(porFav.length), "pessoas e empresas diferentes"],
           ["Quem mais recebeu", porFav[0] ? fmt.compact(porFav[0][1]) : "–", porFav[0] ? fmt.esc(porFav[0][0]) : ""],
         ]);
-        P.barras(q("[data-fav]"), porFav.slice(0, 10), { total, onClick: k => { st.fav = k; desenhar(); } });
+        P.barras(q("[data-fav]"), porFav.slice(0, 10), { total, onClick: k => P.detalhe("pessoa", { nome: k }) });
         P.barras(q("[data-tipo]"), P.somarPor(f, l => l.tipo, l => l.valor).slice(0, 8), { total, onClick: k => { st.tipo = k; desenhar(); } });
         P.tabela(q("[data-tabela]"), [
           { t: "Data", k: "dia", f: v => fmt.data(v) },
@@ -48,7 +48,7 @@
           { t: "Setor", k: "orgao" },
           { t: "Motivo", k: "desc", f: (v, l) => `<small>${fmt.esc(v)}</small><br><small class="muted">${fmt.esc(l.tipo)}</small>` },
           { t: "Valor", k: "valor", r: true, f: v => fmt.brl(v) },
-        ], f);
+        ], f, { aoClicar: l => P.detalhe("diaria", { d: l, ano: st.ano }) });
       }
       q("[data-f=ano]").onchange = e => { st.ano = e.target.value; desenhar(); };
       q("[data-f=busca]").value = st.busca;

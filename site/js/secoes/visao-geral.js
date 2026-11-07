@@ -67,7 +67,7 @@
             <div class="card-bd"><div id="vgMes"></div></div>
           </section>
           <section class="card span-4">
-            <div class="card-hd"><div><h2>Quem mais recebeu</h2><div class="sub">Toque num nome para filtrar</div></div>
+            <div class="card-hd"><div><h2>Quem mais recebeu</h2><div class="sub">Toque num nome para ver a ficha</div></div>
               <div class="seg" role="group" aria-label="Incluir folha de pagamento"><button type="button" data-p="0" aria-pressed="${!semPessoal}">Todos</button><button type="button" data-p="1" aria-pressed="${semPessoal}">Sem folha</button></div></div>
             <div class="card-bd"><div id="vgTop"></div></div>
           </section>
@@ -88,7 +88,7 @@
       });
 
       const top = T.porChave(rows.filter((d) => !semPessoal || T.tipoCredor(d) !== "Pessoal e encargos"), "forn").filter(([, v]) => v > 0).slice(0, 8).map(([k, v]) => ({ k, v }));
-      P.ui.hbars(el.querySelector("#vgTop"), top, { total, onClick: (k) => { P.setFiltro({ forn: k }); } });
+      P.ui.hbars(el.querySelector("#vgTop"), top, { total, onClick: (k) => P.detalhe("pessoa", { nome: k }) });
       el.querySelectorAll(".seg [data-p]").forEach((b) => (b.onclick = () => { semPessoal = b.dataset.p === "1"; P.setFiltro({}); }));
 
       const al = T.sinais(emps, total).slice(0, 5), ae = el.querySelector("#vgAlertas");
@@ -97,6 +97,7 @@
 
       const cts = (await T.carregarContratos()).filter((c) => String(c.assinatura || c.publicado || "").startsWith(f.ano)).sort((a, b) => String(b.publicado || "").localeCompare(String(a.publicado || ""))).slice(0, 5);
       el.querySelector("#vgCt").innerHTML = cts.length ? cts.map(linhaContrato).join("") : P.ui.vazio(`Nenhum contrato de ${f.ano} no PNCP.`);
+      el.querySelectorAll("#vgCt .row").forEach((r, i) => { r.classList.add("clicavel"); r.tabIndex = 0; r.onclick = (e) => { if (!e.target.closest("a")) P.detalhe("contratoPncp", { c: cts[i] }); }; r.onkeydown = (e) => { if (e.key === "Enter") r.click(); }; });
     },
   });
 

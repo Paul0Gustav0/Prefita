@@ -19,7 +19,7 @@
         <div data-kpis style="margin-top:18px"></div>
         <div class="grid" style="margin-top:22px">
           <section class="panel"><div class="hd"><h2>Contratos por modalidade</h2><span>Valor contratado · toque para filtrar</span></div><div class="hbars" data-mod></div></section>
-          <section class="panel"><div class="hd"><h2>Maiores contratados</h2><span>Valor contratado no ano</span></div><div class="hbars" data-forn></div></section>
+          <section class="panel"><div class="hd"><h2>Maiores contratados</h2><span>Valor contratado no ano · toque para ver a ficha</span></div><div class="hbars" data-forn></div></section>
         </div>
         <section class="panel" style="margin-top:22px"><div class="hd"><h2>Contratos</h2><span>Mais recentes primeiro</span></div><div data-ct></div></section>
         <section class="panel" style="margin-top:22px"><div class="hd"><h2>Licitações e compras diretas</h2><span>Processos abertos no ano</span></div><div data-lic></div></section>`;
@@ -47,7 +47,7 @@
           ["Processos abertos", fmt.num(fl.length), `${fmt.num(fl.filter(l => /andamento/i.test(l.situacao)).length)} em andamento`],
         ]);
         P.barras(q("[data-mod]"), P.somarPor(fc, c => c.mod, c => c.valor + c.aditado), { total, onClick: k => { st.mod = k; desenhar(); } });
-        P.barras(q("[data-forn]"), P.somarPor(fc, c => c.forn, c => c.valor + c.aditado).slice(0, 10), { total, onClick: k => { st.busca = k; q("[data-f=busca]").value = k; desenhar(); } });
+        P.barras(q("[data-forn]"), P.somarPor(fc, c => c.forn, c => c.valor + c.aditado).slice(0, 10), { total, onClick: k => P.detalhe("fornecedor", { nome: k, doc: fc.find(c => c.forn === k)?.doc }) });
         P.tabela(q("[data-ct]"), [
           { t: "Assinatura", k: "assinatura", f: v => fmt.data(v) },
           { t: "Contrato", k: "num", f: (v, c) => `<span class="mono">${fmt.esc(v)}</span><br><small class="muted">${fmt.esc(c.mod)}</small>` },
@@ -55,14 +55,14 @@
           { t: "Vigência até", k: "fim", f: v => v && v >= hoje && v <= em60 ? `<span class="pill fim">${fmt.data(v)}</span>` : fmt.data(v) },
           { t: "Valor", k: c => c.valor + c.aditado, r: true, f: (v, c) => fmt.brl(v) + (c.aditado ? `<br><small class="muted">aditivos ${fmt.brl(c.aditado)}</small>` : "") },
           { t: "Empenhado", k: "empenhado", r: true, f: (v, c) => fmt.brl(v) + `<br><small class="muted">${c.valor + c.aditado ? fmt.pct(v / (c.valor + c.aditado) * 100) : "–"} do contrato</small>` },
-        ], fc, { porPagina: 15 });
+        ], fc, { porPagina: 15, aoClicar: c => P.detalhe("contratoPortal", { c, ano: st.ano }) });
         P.tabela(q("[data-lic]"), [
           { t: "Abertura", k: "abertura", f: v => fmt.data(v) },
           { t: "Processo", k: "proc", f: (v, l) => `<span class="mono">${fmt.esc(v)}</span><br><small class="muted">${fmt.esc(l.mod)}${l.srp ? " · registro de preços" : ""}</small>` },
           { t: "Objeto", k: "objeto", f: v => `<small>${fmt.esc(v)}</small>` },
           { t: "Situação", k: "situacao" },
           { t: "Valor estimado", k: "valor", r: true, f: v => v ? fmt.brl(v) : "–" },
-        ], fl, { porPagina: 15 });
+        ], fl, { porPagina: 15, aoClicar: l => P.detalhe("licitacao", { l, ano: st.ano }) });
       }
       q("[data-f=ano]").onchange = e => { st.ano = e.target.value; desenhar(); };
       q("[data-f=busca]").value = st.busca;

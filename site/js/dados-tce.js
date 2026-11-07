@@ -18,7 +18,7 @@
           const [o, m, dm, nr, fi, ii, v, e] = x;
           const [dd, mm] = String(dm).split("/");
           const d = { orgao: o, ano: +a, mes: m, dt: dd && mm ? new Date(+a, +mm - 1, +dd) : null, nr, forn: j.f[fi], idf: j.i[ii], ev: e,
-            vl: e === "E" || e === "R" ? v : e === "A" ? -v : 0, an: e === "A" ? v : 0, pg: e === "P" ? v : 0 };
+            vl: e === "E" || e === "R" ? v : e === "A" ? -v : 0, an: e === "A" ? v : 0, pg: e === "P" ? v : 0, lq: e === "L" ? v : 0 };
           const k = o + "|" + nr;
           const g = agg.get(k) || agg.set(k, { liq: 0, pg: 0 }).get(k);
           g.liq += d.vl; g.pg += d.pg;

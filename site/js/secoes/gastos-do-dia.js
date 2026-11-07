@@ -42,9 +42,9 @@
           <section class="panel"><div class="hd"><h2>Pagamentos detectados</h2><span>O que mudou de "pago" entre uma coleta e a seguinte</span></div><div data-pagtos></div></section>
           <section class="panel"><div class="hd"><h2>Por área</h2><span>Toque para filtrar</span></div><div class="hbars" data-area></div></section>
           <section class="panel"><div class="hd"><h2>Por secretaria ou setor</h2><span>Toque para filtrar</span></div><div class="hbars" data-sec></div></section>
-          <section class="panel"><div class="hd"><h2>Maiores fornecedores</h2><span>Empenhado no período</span></div><div class="hbars" data-forn></div></section>
+          <section class="panel"><div class="hd"><h2>Maiores fornecedores</h2><span>Empenhado no período · toque para ver a ficha</span></div><div class="hbars" data-forn></div></section>
         </div>
-        <section class="panel" style="margin-top:22px"><div class="hd"><h2>Empenhos</h2><span data-titulo></span></div><div data-tabela></div></section>`;
+        <section class="panel" style="margin-top:22px"><div class="hd"><h2>Empenhos <small class="muted" style="font-weight:400;font-size:13px">· toque para ver itens e pagamentos</small></h2><span data-titulo></span></div><div data-tabela></div></section>`;
       const q = s => el.querySelector(s);
 
       async function desenhar() {
@@ -71,12 +71,13 @@
         ]);
 
         const pg = pagamentos.filter(p => +p.ano === +st.ano || !st.ano).slice(0, 12);
-        q("[data-pagtos]").innerHTML = pg.length ? `<div class="contratos">${pg.map(p => `<div class="ct"><div class="obj"><b>${fmt.esc(p.forn)}</b><br><span class="muted">${fmt.esc(p.desc)}</span></div><div class="val">${fmt.brl(p.valor)}</div><div class="meta"><span>${fmt.data(p.dia)}</span><span>Empenho ${fmt.esc(p.num)}</span><span>${fmt.esc(p.sec)}</span></div></div>`).join("")}</div>`
+        q("[data-pagtos]").innerHTML = pg.length ? `<div class="contratos">${pg.map(p => `<div class="ct clicavel" data-pg="${fmt.esc(p.id)}" data-ano="${p.ano}" tabindex="0" role="button"><div class="obj"><b>${fmt.esc(p.forn)}</b><br><span class="muted">${fmt.esc(p.desc)}</span></div><div class="val">${fmt.brl(p.valor)}</div><div class="meta"><span>${fmt.data(p.dia)}</span><span>Empenho ${fmt.esc(p.num)}</span><span>${fmt.esc(p.sec)}</span></div></div>`).join("")}</div>`
           : `<div class="empty">A coleta compara o valor pago de cada empenho com o do dia anterior. Os primeiros pagamentos aparecem depois da segunda coleta diária.</div>`;
 
+        q("[data-pagtos]").querySelectorAll("[data-pg]").forEach(c => { c.onclick = () => P.detalhe("empenho", { ano: c.dataset.ano, id: c.dataset.pg }); c.onkeydown = e => { if (e.key === "Enter") c.click(); }; });
         P.barras(q("[data-area]"), P.somarPor(f, l => l.area, l => l.emp).filter(i => i[1] > 0).slice(0, 10), { onClick: k => { st.area = k; desenhar(); } });
         P.barras(q("[data-sec]"), P.somarPor(f, l => l.sec, l => l.emp).filter(i => i[1] > 0).slice(0, 10), { onClick: k => { st.sec = k; desenhar(); } });
-        P.barras(q("[data-forn]"), P.somarPor(f, l => l.forn, l => l.emp).filter(i => i[1] > 0).slice(0, 10), { onClick: k => { st.busca = k; q("[data-f=busca]").value = k; desenhar(); } });
+        P.barras(q("[data-forn]"), P.somarPor(f, l => l.forn, l => l.emp).filter(i => i[1] > 0).slice(0, 10), { onClick: k => P.detalhe("fornecedor", { nome: k, doc: f.find(l => l.forn === k)?.doc }) });
 
         q("[data-titulo]").textContent = st.dia ? `Emitidos em ${fmt.data(st.dia)}` : "Mais recentes primeiro";
         P.tabela(q("[data-tabela]"), [
@@ -87,7 +88,7 @@
           { t: "Descrição", k: "desc", f: (v, l) => `<small>${fmt.esc(v)}</small><br><small class="muted">${fmt.esc(l.nat)} · ${fmt.esc(l.mod)}</small>` },
           { t: "Empenhado", k: "emp", r: true, f: v => fmt.brl(v) },
           { t: "Pago", k: "pago", r: true, f: (v, l) => v >= l.emp - 0.01 && l.emp > 0 ? `<span class="pill">${fmt.brl(v)}</span>` : fmt.brl(v) },
-        ], f);
+        ], f, { aoClicar: l => P.detalhe("empenho", { ano: l.ano || st.ano, id: l.id }) });
       }
 
       q("[data-f=ano]").onchange = e => { st.ano = e.target.value; st.dia = ""; q("[data-f=dia]").value = ""; desenhar(); };
