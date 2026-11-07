@@ -29,3 +29,10 @@ São sinais automáticos para orientar a consulta, não acusações:
 - **Fracionamento?** 3 ou mais empenhos do mesmo fornecedor no mesmo mês, cada um abaixo do limite de dispensa (R$ 62.725,59), que somados passam dele.
 - **Concentração**: fornecedor com mais de 5% do total empenhado no período.
 - **Fora do padrão**: empenho acima de R$ 20 mil e mais de 3 vezes o valor típico daquele fornecedor.
+
+## Sócios dos fornecedores e área reservada
+
+- `coletor/socios.py` consulta o quadro societário (QSA) de cada fornecedor com CNPJ na base aberta da Receita (minhareceita.org, com BrasilAPI de reserva). As respostas ficam no cache do Actions (`.cache/cnpj`, fora do repositório) e são renovadas a cada 60 dias.
+- **Aba pública "Sócios"** (`site/data/socios.json`): sócios, abertura, situação e sinais sobre as empresas (aberta pouco antes do primeiro empenho, situação irregular, endereço, telefone ou sócio em comum com outro fornecedor). O CPF mascarado dos sócios não é publicado.
+- **Aba "Área reservada"** (`site/data/reservado.json`): cruzamento de sócios e titulares de MEI com os nomes da folha, em três níveis (forte: nome e CPF compatíveis; médio: só nome; fraco: mesmos sobrenomes em empresa de Itaberá). O arquivo só é gerado **criptografado** (AES-256-GCM, PBKDF2-SHA256 com 600 mil iterações) com a senha do secret `PREFITA_SENHA`; sem o secret, nada é gerado. A senha é digitada no painel e o navegador decifra localmente. Os logs do Actions mostram só contagens, nunca nomes.
+- São indícios para verificação, não acusações: parentesco não é dado público e homônimos existem.
