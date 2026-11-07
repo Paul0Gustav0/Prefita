@@ -33,12 +33,13 @@ print("TEXTO:", txt[:3000])
 print("LINHAS:"); [print("  ", l) for l in ls[:60]]
 print("ERRO?", "'error'" in r[:200])
 # outro mês e outro ano
-for ano, mes in [(2026, 3), (2025, 6), (2024, 2)]:
+for ano, mes in [(2026, 10), (2026, 9)]:
     url = f"{R}/VersaoJson/Pessoal/?ConectarExercicio={ano}&Empresa=1&MostraDadosConsolidado=False&Listagem=Servidores&Ano={ano}&MesFinalPeriodo={mes:02d}"
     d = json.loads(urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=300).read().decode())
-    x = max(d, key=lambda z: float(str(z.get("PROVENTOS") or 0).replace(".", "").replace(",", ".")))
-    key = f"{x['EMPRESA']}|{x['REGISTRO']}|{x['REFERENCIA']}"
-    r = detalhe(key)
-    ls, txt = linhas(r)
-    print(f"\n#### {ano}-{mes:02d} key={key} {x['NOME']} prov={x['PROVENTOS']} desc={x['DESCONTOS']} refs={sorted(set(z['REFERENCIA'] + ':' + z['REFERENCIA_NOME'] for z in d))[:6]} erro={'error' in r[:200]}")
-    print("TEXTO:", txt[:1800])
+    for x in sorted(d, key=lambda z: -float(str(z.get("PROVENTOS") or 0).replace(".", "").replace(",", ".")))[:3] + d[100:102]:
+        key = f"{x['EMPRESA']}|{x['REGISTRO']}|{x['REFERENCIA']}"
+        r = detalhe(key)
+        ls, txt = linhas(r)
+        print("LINHAS", ls[:40])
+        print(f"\n#### {ano}-{mes:02d} key={key} {x['NOME']} prov={x['PROVENTOS']} desc={x['DESCONTOS']} refs={sorted(set(z['REFERENCIA'] + ':' + z['REFERENCIA_NOME'] for z in d))[:6]} erro={'error' in r[:200]}")
+        print("TEXTO:", txt[:2500])
