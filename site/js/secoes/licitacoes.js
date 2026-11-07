@@ -28,8 +28,8 @@
 
       async function desenhar() {
         const [cts, lics] = await Promise.all([P.json(`data/contratos-${st.ano}.json`), P.json(`data/licitacoes-${st.ano}.json`)]);
-        const b = st.busca.trim().toLowerCase();
-        const tem = (...xs) => !b || xs.some(x => (x || "").toLowerCase().includes(b));
+        const b = st.busca.trim();
+        const tem = (...xs) => !b || P.contem(xs.map(x => x || ""), b);
         const fc = cts.filter(c => !c.anulado && (!st.mod || c.mod === st.mod) && tem(c.forn, c.objeto, c.num, c.proc));
         const fl = lics.filter(l => (!st.mod || l.mod === st.mod) && tem(l.objeto, l.proc));
         const total = fc.reduce((s, c) => s + c.valor + c.aditado, 0);

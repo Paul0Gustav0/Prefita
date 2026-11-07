@@ -44,7 +44,6 @@
         <p class="muted" style="margin:0 0 14px;max-width:75ch">Quem trabalha na Prefeitura, em que cargo e quanto recebeu no mês, como publicado pela própria Prefeitura. A remuneração de servidores é pública por lei; o CPF não é mostrado.</p>
         <div class="filters">
           <label>Mês da folha<select data-f="mes">${meses.map(m => `<option value="${m}">${fmt.mes(m)}</option>`).join("")}</select></label>
-          <label>Buscar nome, cargo ou local<input type="search" data-f="busca" placeholder="Ex.: professor, secretário"></label>
           <span data-chips></span>
         </div>
         <div data-kpis style="margin-top:18px"></div>
@@ -54,7 +53,7 @@
           <section class="panel" data-lrf-box hidden><div class="hd"><h2>Limite da Lei de Responsabilidade Fiscal</h2><span data-lrf-per></span></div><div data-lrf></div></section>
           <section class="panel"><div class="hd"><h2>Cargos com mais gente</h2><span>No mês selecionado</span></div><div class="hbars" data-cargo></div></section>
         </div>
-        <section class="panel" style="margin-top:22px"><div class="hd"><h2>Servidores</h2><span>Maiores salários primeiro</span></div><div data-tabela></div></section>`;
+        <section class="panel" style="margin-top:22px"><div class="hd"><h2>Servidores</h2><span>Maiores salários primeiro · toque no cabeçalho para ordenar</span></div><div data-tabela></div></section>`;
       const q = s => el.querySelector(s);
 
       if (lrf && lrf.pct != null) {
@@ -75,9 +74,9 @@
 
       async function desenhar() {
         const linhas = await carregar(st.mes);
-        const b = st.busca.trim().toLowerCase();
+        const b = st.busca.trim();
         const f = linhas.filter(l => (!st.sec || l.sec === st.sec) && (!st.vinc || l.vinc === st.vinc) &&
-          (!b || l.nome.toLowerCase().includes(b) || l.cargo.toLowerCase().includes(b) || l.local.toLowerCase().includes(b)));
+          (!b || P.contem([l.nome, l.cargo, l.local, l.sec], b)));
         const soma = (a, k) => a.reduce((s, l) => s + l[k], 0);
         const ativos = f.filter(l => !l.resc);
         const ord = [...ativos].sort((a, b) => a.bruto - b.bruto);
@@ -102,11 +101,10 @@
           { t: "Bruto", k: "bruto", r: true, f: v => fmt.brl(v) },
           { t: "Descontos", k: "desc", r: true, f: v => fmt.brl(v) },
           { t: "Líquido", k: "liq", r: true, f: v => fmt.brl(v) },
-        ], f, { ordem: 4 });
+        ], f, { ordem: 4, busca: true, placeholder: "Buscar servidor pelo nome, cargo, secretaria ou local", unidade: "servidores", arquivo: "folha-" + st.mes });
       }
 
       q("[data-f=mes]").onchange = e => { st.mes = e.target.value; desenhar(); };
-      let t; q("[data-f=busca]").oninput = e => { clearTimeout(t); t = setTimeout(() => { st.busca = e.target.value; desenhar(); }, 200); };
       await desenhar();
     },
   });

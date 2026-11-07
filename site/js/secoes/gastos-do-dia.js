@@ -49,9 +49,9 @@
 
       async function desenhar() {
         const linhas = await carregar(st.ano);
-        const b = st.busca.trim().toLowerCase();
+        const b = st.busca.trim();
         const f = linhas.filter(l => (!st.dia || l.dia === st.dia) && (!st.area || l.area === st.area) && (!st.sec || l.sec === st.sec) &&
-          (!b || l.forn.toLowerCase().includes(b) || l.num.toLowerCase().includes(b) || l.desc.toLowerCase().includes(b)));
+          (!b || P.contem([l.forn, l.num, l.desc], b)));
         const ultimoDia = linhas.reduce((m, l) => l.dia > m ? l.dia : m, "");
         const doDia = linhas.filter(l => l.dia === ultimoDia);
         const somaEmp = a => a.reduce((s, l) => s + l.emp, 0), somaPago = a => a.reduce((s, l) => s + l.pago, 0);

@@ -32,8 +32,8 @@
   }
 
   function filtrar(dados, f, opts = {}) {
-    const b = (f.busca || "").trim().toLowerCase();
-    return dados.filter((d) => (opts.ignorarMes || !f.mes || d.mes == f.mes) && (!opts.ateMes || d.mes <= opts.ateMes) && (!f.orgao || d.orgao === f.orgao) && (!f.forn || d.forn === f.forn) && (!b || d.forn.toLowerCase().includes(b) || d.nr.toLowerCase().includes(b)));
+    const b = (f.busca || "").trim();
+    return dados.filter((d) => (opts.ignorarMes || !f.mes || d.mes == f.mes) && (!opts.ateMes || d.mes <= opts.ateMes) && (!f.orgao || d.orgao === f.orgao) && (!f.forn || d.forn === f.forn) && (!b || P.contem([d.forn, d.nr], b)));
   }
   const soma = (a, k = "vl") => a.reduce((s, d) => s + d[k], 0);
   function porChave(a, k, campo = "vl") { const m = new Map(); for (const d of a) { const key = d[k] || "Não informado"; m.set(key, (m.get(key) || 0) + d[campo]); } return [...m.entries()].sort((x, y) => y[1] - x[1]); }
