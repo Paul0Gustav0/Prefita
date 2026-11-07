@@ -1,27 +1,36 @@
 #!/usr/bin/env python3
-"""Sondagem temporária 4: página Servidores.aspx (detalhe por servidor?) e tempo de resposta do detalhe de empenho."""
-import re, time, urllib.request
+"""Sondagem temporária 5: callback do DevExpress que mostra proventos e descontos de um servidor."""
+import re, time, urllib.request, urllib.parse, http.cookiejar, concurrent.futures as cf
 UA = {"User-Agent": "prefita-sondagem/1.0 (+https://github.com/Paul0Gustav0/prefita)"}
 R = "https://fiorilli.itabera.online/transparencia"
-def get(url):
+cj = http.cookiejar.CookieJar()
+op = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj))
+def req(url, data=None):
     try:
-        with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=180) as r:
-            return r.status, r.read().decode("utf-8", "replace")
+        r = op.open(urllib.request.Request(url, data=urllib.parse.urlencode(data).encode() if data else None, headers=UA), timeout=180)
+        return r.status, r.read().decode("utf-8", "replace")
     except Exception as e:
         return getattr(e, "code", 0), str(e)
-for pg in ["Servidores.aspx", "ServidoresRelatorios.aspx"]:
-    st, h = get(R + "/" + pg)
-    print("=====", pg, st, len(h))
-    for k in ["Provento", "Verba", "Holerite", "Contracheque", "Detalh", "Evento", "WebMethod", "PageMethods", "\\.aspx", "ajax", "url:"]:
-        for m in list(re.finditer(k, h, re.I))[:8]:
-            print(k, "::", re.sub(r"\s+", " ", h[max(0, m.start()-250): m.end()+350]))
-    for s in sorted(set(re.findall(r'src="([^"]+\.js[^"]*)"', h))):
-        u = R + "/" + s.lstrip("./")
-        st2, js = get(u)
-        hits = sorted(set(re.findall(r"[\w/]+\.aspx[\w/?=&]*|url\s*:\s*['\"][^'\"]+", js)))
-        print("JS", u, st2, hits[:60])
-B = R + "/VersaoJson/Despesas/?ConectarExercicio=2026&Empresa=1"
+op.open(urllib.request.Request(R + "/", headers=UA), timeout=120).read()
+st, h = req(R + "/Servidores.aspx")
+print("GET", st, len(h))
+hid = dict(re.findall(r'<input type="hidden" name="([^"]+)" id="[^"]*" value="([^"]*)"', h))
+print("HIDDEN", {k: len(v) for k, v in hid.items()})
+keys = re.findall(r"dxo\.keys=\[([^\]]*)\]", h)
+print("KEYS", keys[:1][0][:200] if keys else None)
+cb = sorted(set(re.findall(r"'(pcDetalhe[^']*callbackPanel[^']*)'|\"(pcDetalhe[^\"]*callbackPanel[^\"]*)\"", h)))
+print("CB IDS", cb[:10])
+for m in list(re.finditer(r"OnMoreInfoClick|onCustomButtonClick", h))[:4]:
+    print("CTX", re.sub(r"\s+", " ", h[m.start()-200:m.end()+600]))
+key = "001|002664|952"
+for cid in ["pcDetalhe$callbackPanel", "pcDetalhe_callbackPanel"]:
+    for par in [key, "c0:" + key, f"c0:{len(key)}|{key}"]:
+        d = {k: v for k, v in hid.items()}
+        d.update({"__CALLBACKID": cid, "__CALLBACKPARAM": par, "__EVENTTARGET": "", "__EVENTARGUMENT": ""})
+        st, t = req(R + "/Servidores.aspx", d)
+        txt = re.sub(r"<[^>]+>", " ", t); txt = re.sub(r"\s+", " ", txt)
+        print(f"\n### {cid} | {par} -> {st} {len(t)} :: {txt[:1500]}")
+B = R + "/VersaoJson/Despesas/?ConectarExercicio=2026&Empresa=1&Listagem=ItensEmpenhoPorNumeroEmpenho&strTipoEmpenho=OR&intNumeroEmpenho="
 t0 = time.time()
-for n in range(2100, 2120):
-    get(f"{B}&Listagem=ItensEmpenhoPorNumeroEmpenho&intNumeroEmpenho={n}&strTipoEmpenho=OR")
-print("20 chamadas em", round(time.time() - t0, 1), "s")
+with cf.ThreadPoolExecutor(6) as ex: res = list(ex.map(lambda n: urllib.request.urlopen(urllib.request.Request(B + str(n), headers=UA), timeout=120).status, range(2200, 2260)))
+print("60 chamadas em 6 threads:", round(time.time() - t0, 1), "s", set(res))
