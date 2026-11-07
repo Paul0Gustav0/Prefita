@@ -1,0 +1,12 @@
+name: Sondar portal (temporário)
+on:
+  push:
+    branches: [claude/project-thread-hm63qb]
+    paths: ["sondagem/**", ".github/workflows/sondar.yml"]
+jobs:
+  sondar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 sondagem/sondar.py
